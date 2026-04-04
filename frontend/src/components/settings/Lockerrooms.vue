@@ -1,70 +1,65 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-2xl font-bold">Kleedkamers</h2>
-
-      <button
-        class="px-3 py-1 bg-brand-primary hover:bg-brand-primary-dark text-white rounded-md text-sm"
-        @click="addRoom"
-      >
-        + Toevoegen
+      <h2 class="text-sm font-bold uppercase tracking-widest text-gray-400">Kleedkamers</h2>
+      <button class="text-xs text-gray-400 hover:text-gray-700 transition-colors" @click="addRoom">
+        + toevoegen
       </button>
     </div>
 
-    <div
-      class="grid gap-3"
-      style="grid-template-columns: repeat(auto-fit, minmax(140px, 160px));"
-    >
-      <div
-        v-for="room in rooms"
-        :key="room.id"
-        class="mp-container p-3 flex flex-col gap-2"
-      >
-        <input
-          v-model="room.name"
-          @input="saveWithDebounce"
-          class="w-full border border-brand-border rounded px-2 py-1 text-sm text-center"
-          placeholder="Naam"
-        />
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs text-gray-400 border-b border-gray-100">
+          <th class="pb-2 font-medium">Naam</th>
+          <th class="pb-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="room in rooms" :key="room.id" class="border-b border-gray-50">
+          <td class="py-2 pr-4">
+            <input
+              v-model="room.name"
+              @input="saveWithDebounce"
+              class="w-full bg-transparent border-b border-transparent focus:border-gray-300 outline-none text-gray-800 py-0.5"
+              placeholder="Naam"
+            />
+          </td>
+          <td class="py-2 text-right">
+            <button
+              @click="removeRoom(room.id)"
+              class="text-gray-200 hover:text-red-400 transition-colors text-base leading-none"
+            >×</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
-        <div
-          class="mt-1 px-2 py-1 text-center cursor-pointer bg-red-50 text-red-600 text-xs hover:bg-red-100"
-          @click="removeRoom(room.id)"
-        >
-          Verwijder
-        </div>
-      </div>
-    </div>
+    <p v-if="rooms.length === 0" class="text-xs text-gray-300 mt-4">Geen kleedkamers geconfigureerd.</p>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { getLockers, saveLockers } from "@/services/settings";
-import { autosave } from "@/utils/autosave";
+import { ref, onMounted } from 'vue'
+import { getLockers, saveLockers } from '@/services/settings'
+import { autosave } from '@/utils/autosave'
 
-const rooms = ref([]);
+const rooms = ref([])
 
 onMounted(async () => {
-  rooms.value = await getLockers();
-});
+  rooms.value = await getLockers()
+})
 
 function addRoom() {
-  rooms.value.push({
-    id: Date.now(),
-    name: `${rooms.value.length + 1}`,
-  });
-  saveWithDebounce();
+  rooms.value.push({ id: Date.now(), name: `${rooms.value.length + 1}` })
+  saveWithDebounce()
 }
 
 function removeRoom(id) {
-  rooms.value = rooms.value.filter((r) => r.id !== id);
-  saveWithDebounce();
+  rooms.value = rooms.value.filter(r => r.id !== id)
+  saveWithDebounce()
 }
 
 function saveWithDebounce() {
-  autosave("lockers", async () => {
-    await saveLockers(rooms.value);
-  });
+  autosave('lockers', async () => { await saveLockers(rooms.value) })
 }
 </script>

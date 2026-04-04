@@ -1,105 +1,75 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-2xl font-bold">Velden</h2>
-
-      <button
-        class="px-3 py-1 bg-brand-primary hover:bg-brand-primary-dark text-white rounded-md text-sm"
-        @click="addField"
-      >
-        + Veld toevoegen
+      <h2 class="text-sm font-bold uppercase tracking-widest text-gray-400">Velden</h2>
+      <button class="text-xs text-gray-400 hover:text-gray-700 transition-colors" @click="addField">
+        + toevoegen
       </button>
     </div>
 
-    <div
-      class="grid gap-3"
-      style="grid-template-columns: repeat(auto-fit, minmax(220px, 260px));"
-    >
-      <div
-        v-for="field in fields"
-        :key="field.id"
-        class="mp-container flex flex-col gap-3"
-      >
-        <!-- Field name -->
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Naam</label>
-          <input
-            v-model="field.name"
-            @input="saveWithDebounce"
-            class="w-full border border-brand-border rounded px-2 py-1 text-sm"
-          />
-        </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs text-gray-400 border-b border-gray-100">
+          <th class="pb-2 font-medium">Naam</th>
+          <th class="pb-2 font-medium">Grastype</th>
+          <th class="pb-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="field in fields" :key="field.id" class="border-b border-gray-50 group">
+          <td class="py-2 pr-4">
+            <input
+              v-model="field.name"
+              @input="saveWithDebounce"
+              class="w-full bg-transparent border-b border-transparent focus:border-gray-300 outline-none text-gray-800 py-0.5"
+            />
+          </td>
+          <td class="py-2 pr-4">
+            <select
+              v-model="field.surface"
+              @change="saveWithDebounce"
+              class="bg-transparent border-b border-transparent focus:border-gray-300 outline-none text-gray-600 text-xs py-0.5"
+            >
+              <option value="kunstgras">Kunstgras</option>
+              <option value="natuurgras">Natuurgras</option>
+            </select>
+          </td>
+          <td class="py-2 text-right">
+            <button
+              @click="removeField(field.id)"
+              class="text-gray-200 hover:text-red-400 transition-colors text-base leading-none"
+            >×</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
-        <!-- Field type -->
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Type veld</label>
-          <select
-            v-model="field.type"
-            @change="saveWithDebounce"
-            class="w-full border border-brand-border rounded px-2 py-1 text-sm"
-          >
-            <option value="full">Heel veld</option>
-            <option value="half">Half veld</option>
-            <option value="quarter">Kwart veld</option>
-          </select>
-        </div>
-
-        <!-- Surface -->
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Grastype</label>
-          <select
-            v-model="field.surface"
-            @change="saveWithDebounce"
-            class="w-full border border-brand-border rounded px-2 py-1 text-sm"
-          >
-            <option value="kunstgras">Kunstgras</option>
-            <option value="natuurgras">Natuurgras</option>
-          </select>
-        </div>
-
-        <!-- Delete -->
-        <div
-          class="mt-2 px-2 py-1 rounded-md text-center cursor-pointer
-                 bg-red-50 text-red-600 text-sm hover:bg-red-100"
-          @click="removeField(field.id)"
-        >
-          Verwijder veld
-        </div>
-      </div>
-    </div>
+    <p v-if="fields.length === 0" class="text-xs text-gray-300 mt-4">Geen velden geconfigureerd.</p>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { getFields, saveFields } from "@/services/settings";
-import { autosave } from "@/utils/autosave";
+import { ref, onMounted } from 'vue'
+import { getFields, saveFields } from '@/services/settings'
+import { autosave } from '@/utils/autosave'
 
-const fields = ref([]);
+const fields = ref([])
 
 onMounted(async () => {
-  fields.value = await getFields();
-});
+  fields.value = await getFields()
+})
 
 function addField() {
-  const newId = Date.now();
-  fields.value.push({
-    id: newId,
-    name: `Veld ${fields.value.length + 1}`,
-    type: "full",
-    surface: "kunstgras"
-  });
-  saveWithDebounce();
+  fields.value.push({ id: Date.now(), name: `Veld ${fields.value.length + 1}`, type: 'full', surface: 'kunstgras' })
+  saveWithDebounce()
 }
 
 function removeField(id) {
-  fields.value = fields.value.filter((f) => f.id !== id);
-  saveWithDebounce();
+  fields.value = fields.value.filter(f => f.id !== id)
+  saveWithDebounce()
 }
 
 function saveWithDebounce() {
-  autosave("fields", async () => {
-    await saveFields(fields.value);
-  });
+  autosave('fields', async () => { await saveFields(fields.value) })
 }
 </script>
