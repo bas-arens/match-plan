@@ -19,6 +19,7 @@ class SAScheduler:
     SURFACE_AVOID_PENALTY   = 40
     LOCKER_BUFFER           = 20
     LOCKER_PENALTY          = 50
+    LOCKER_PREF_PENALTY     = 30
     WARMUP_DURATION         = 15   # minutes of warm-up before match on the same field
 
     # Hard constraint penalties (large, but finite so SA can escape)
@@ -206,6 +207,12 @@ class SAScheduler:
                 )
             ]
 
+            # Sort free lockers so preferred ones come first
+            pref = next((p for p in self.preferences if p["team"] == match["home"]), None)
+            preferred_locker_ids = pref.get("preferred_locker_ids", []) if pref else []
+            if preferred_locker_ids:
+                free.sort(key=lambda lk: 0 if lk["id"] in preferred_locker_ids else 1)
+
             if len(free) >= 2:
                 home_lk, away_lk = free[0], free[1]
                 penalty = 0
@@ -216,6 +223,10 @@ class SAScheduler:
             else:
                 home_lk, away_lk = self.lockers[0], self.lockers[1]
                 penalty  = self.LOCKER_PENALTY * 2
+
+            # Soft penalty if preferred locker was unavailable
+            if preferred_locker_ids and home_lk["id"] not in preferred_locker_ids:
+                penalty += self.LOCKER_PREF_PENALTY
 
             total += penalty
             placed.append({

@@ -3,20 +3,26 @@
 
     <div v-if="loading" class="text-xs text-gray-400">Laden...</div>
 
-    <div v-else>
-      <table class="w-full text-sm border-collapse">
+    <div v-else class="overflow-x-auto">
+      <table class="text-sm border-collapse">
         <thead>
           <tr class="text-left text-xs text-gray-400 border-b border-gray-200">
-            <th class="pb-2 pr-6 font-medium w-48">Team</th>
-            <th class="pb-2 pr-3 font-medium">Vanaf</th>
-            <th class="pb-2 pr-6 font-medium">Tot</th>
+            <th class="pb-2 pr-6 font-medium" style="min-width:180px">Team</th>
+            <th class="pb-2 pr-8 font-medium" style="min-width:220px">Tijdvenster</th>
             <th
               v-for="field in fields"
-              :key="field.id"
+              :key="'fh-' + field.id"
               class="pb-2 pr-4 font-medium text-center"
+              style="min-width:56px"
             >{{ field.name }}</th>
-            <th class="pb-2 pr-4 font-medium text-center text-xs">Kunstgras<br>vermijden</th>
-            <th class="pb-2 font-medium text-center text-xs">Natuurgras<br>vermijden</th>
+            <th
+              v-for="locker in lockers"
+              :key="'lh-' + locker.id"
+              class="pb-2 pr-4 font-medium text-center"
+              style="min-width:56px"
+            >{{ locker.name }}</th>
+            <th class="pb-2 pr-4 font-medium text-center text-xs" style="min-width:64px">Kunst-<br>gras ✗</th>
+            <th class="pb-2 font-medium text-center text-xs" style="min-width:64px">Natuur-<br>gras ✗</th>
           </tr>
         </thead>
 
@@ -26,7 +32,7 @@
             <!-- CATEGORY ROW -->
             <tr>
               <td
-                :colspan="3 + fields.length + 2"
+                :colspan="2 + fields.length + lockers.length + 2"
                 class="pt-6 pb-1 text-xs font-bold uppercase tracking-widest text-gray-400"
               >{{ category }}</td>
             </tr>
@@ -38,48 +44,52 @@
               class="border-b border-gray-50 hover:bg-gray-50 transition-colors"
             >
               <!-- Team name -->
-              <td class="py-2 pr-6 text-gray-700 truncate max-w-[180px]">
+              <td class="py-3 pr-6 text-gray-700 truncate" style="max-width:180px">
                 {{ team.team }}
               </td>
 
-              <!-- Vanaf -->
-              <td class="py-2 pr-3">
-                <select
-                  v-model="team.start"
-                  @change="debouncedSave"
-                  class="bg-transparent border-b border-gray-200 focus:border-gray-500 outline-none text-xs text-gray-700 py-0.5 pr-1"
-                >
-                  <option v-for="t in times" :key="t" :value="t">{{ t }}</option>
-                </select>
-              </td>
-
-              <!-- Tot -->
-              <td class="py-2 pr-6">
-                <select
-                  v-model="team.end"
-                  @change="debouncedSave"
-                  class="bg-transparent border-b border-gray-200 focus:border-gray-500 outline-none text-xs text-gray-700 py-0.5 pr-1"
-                >
-                  <option v-for="t in times" :key="t" :value="t">{{ t }}</option>
-                </select>
+              <!-- Time range slider -->
+              <td class="py-3 pr-8" style="min-width:220px">
+                <TimeRangeSlider
+                  :modelStart="team.rangeStart"
+                  :modelEnd="team.rangeEnd"
+                  :min="DAY_START_MIN"
+                  :max="DAY_END_MIN"
+                  @update:modelStart="val => { team.rangeStart = val; team.start = minToTime(val); debouncedSave() }"
+                  @update:modelEnd="val => { team.rangeEnd = val; team.end = minToTime(val); debouncedSave() }"
+                />
               </td>
 
               <!-- Field preference checkboxes -->
               <td
                 v-for="field in fields"
-                :key="field.id"
-                class="py-2 pr-4 text-center"
+                :key="'f-' + field.id"
+                class="py-3 pr-4 text-center"
               >
                 <input
                   type="checkbox"
                   :checked="team.preferred_field_ids.includes(field.id)"
-                  @change="toggleField(team, field.id, $event)"
+                  @change="toggleItem(team, 'preferred_field_ids', field.id, $event)"
+                  class="accent-gray-700 cursor-pointer"
+                />
+              </td>
+
+              <!-- Locker preference checkboxes -->
+              <td
+                v-for="locker in lockers"
+                :key="'l-' + locker.id"
+                class="py-3 pr-4 text-center"
+              >
+                <input
+                  type="checkbox"
+                  :checked="team.preferred_locker_ids.includes(locker.id)"
+                  @change="toggleItem(team, 'preferred_locker_ids', locker.id, $event)"
                   class="accent-gray-700 cursor-pointer"
                 />
               </td>
 
               <!-- Avoid kunstgras -->
-              <td class="py-2 pr-4 text-center">
+              <td class="py-3 pr-4 text-center">
                 <input
                   type="checkbox"
                   :checked="team.avoid_surfaces.includes('kunstgras')"
@@ -89,7 +99,7 @@
               </td>
 
               <!-- Avoid natuurgras -->
-              <td class="py-2 text-center">
+              <td class="py-3 text-center">
                 <input
                   type="checkbox"
                   :checked="team.avoid_surfaces.includes('natuurgras')"
@@ -109,30 +119,38 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import TimeRangeSlider from '@/components/common/TimeRangeSlider.vue'
 import { getTeams } from '@/services/sportlink.js'
-import { getPreferences, savePreferences, getFields } from '@/services/settings.js'
+import { getPreferences, savePreferences, getFields, getLockers } from '@/services/settings.js'
 import { autosave } from '@/utils/autosave.js'
+
+const DAY_START_MIN = 7 * 60
+const DAY_END_MIN   = 23 * 60
 
 const teamPreferences = ref({})
 const fields          = ref([])
+const lockers         = ref([])
 const loading         = ref(true)
 
-// Time options: 15-min intervals from 06:00 to 23:00
-const times = []
-for (let h = 6; h <= 23; h++) {
-  for (const m of ['00', '15', '30', '45']) {
-    times.push(`${String(h).padStart(2, '0')}:${m}`)
-  }
+function timeToMin(t) {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+function minToTime(min) {
+  return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
 }
 
 onMounted(async () => {
-  const [categories, saved, loadedFields] = await Promise.all([
+  const [categories, saved, loadedFields, loadedLockers] = await Promise.all([
     getTeams(),
     getPreferences(),
     getFields(),
+    getLockers(),
   ])
 
-  fields.value = loadedFields
+  fields.value  = loadedFields
+  lockers.value = loadedLockers
 
   const savedMap = {}
   for (const p of saved) savedMap[p.team] = p
@@ -140,14 +158,19 @@ onMounted(async () => {
   const result = {}
   for (const [category, teamList] of Object.entries(categories)) {
     result[category] = teamList.map(name => {
-      const prev = savedMap[name]
+      const prev  = savedMap[name]
+      const start = prev?.start ?? '09:00'
+      const end   = prev?.end   ?? '17:00'
       return {
         team:                name,
         category,
-        start:               prev?.start               ?? '09:00',
-        end:                 prev?.end                 ?? '17:00',
-        preferred_field_ids: prev?.preferred_field_ids ?? [],
-        avoid_surfaces:      prev?.avoid_surfaces      ?? [],
+        start,
+        end,
+        rangeStart:          timeToMin(start),
+        rangeEnd:            timeToMin(end),
+        preferred_field_ids:  prev?.preferred_field_ids  ?? [],
+        preferred_locker_ids: prev?.preferred_locker_ids ?? [],
+        avoid_surfaces:       prev?.avoid_surfaces       ?? [],
       }
     })
   }
@@ -158,14 +181,14 @@ onMounted(async () => {
 })
 
 function flatten(obj) {
-  return Object.values(obj).flat()
+  return Object.values(obj).flat().map(({ rangeStart, rangeEnd, ...rest }) => rest)
 }
 
-function toggleField(team, fieldId, event) {
+function toggleItem(team, key, id, event) {
   if (event.target.checked) {
-    team.preferred_field_ids = [...team.preferred_field_ids, fieldId]
+    team[key] = [...team[key], id]
   } else {
-    team.preferred_field_ids = team.preferred_field_ids.filter(id => id !== fieldId)
+    team[key] = team[key].filter(x => x !== id)
   }
   debouncedSave()
 }
