@@ -37,8 +37,10 @@
           <td class="py-2 text-right">
             <button
               @click="removeField(field.id)"
-              class="text-gray-200 hover:text-red-400 transition-colors text-base leading-none"
-            >×</button>
+              class="inline-flex items-center justify-center w-7 h-7 rounded border border-gray-200 text-gray-400 hover:border-red-300 hover:bg-red-50 hover:text-red-500 active:bg-red-100 transition-colors"
+            >
+              <Trash2 :size="13" />
+            </button>
           </td>
         </tr>
       </tbody>
@@ -50,6 +52,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { Trash2 } from 'lucide-vue-next'
 import { getFields, saveFields } from '@/services/settings'
 import { autosave } from '@/utils/autosave'
 
