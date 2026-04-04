@@ -151,7 +151,7 @@
 
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { timeToMin } from '@/utils/time.js'
 
 const props = defineProps({
@@ -433,6 +433,10 @@ function commitDrag() {
   drag.active = false; drag.matchId = null
   window.removeEventListener('mouseup', commitDrag)
 }
+
+onUnmounted(() => {
+  window.removeEventListener('mouseup', commitDrag)
+})
 
 const ghostStyle = computed(() => {
   if (!drag.active || !dragMatch.value) return { display: 'none' }
