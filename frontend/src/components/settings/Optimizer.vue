@@ -58,10 +58,9 @@ const algorithms = [
     badge: 'snel',
     badgeClass: 'border-green-200 text-green-700 bg-green-50',
     description:
-      'Plaatst wedstrijden één voor één op basis van moeilijkheidsgraad — smalste tijdvenster eerst. ' +
-      'Voor elke wedstrijd kiest het de best beschikbare combinatie van veld en tijdstip. ' +
-      'Deterministisch: geeft altijd dezelfde uitkomst.',
-    when: 'Snel een eerste planning zien, of als de speeldag eenvoudig is.',
+      'Plant wedstrijden één voor één — de moeilijkst in te plannen wedstrijden gaan als eerste. ' +
+      'Vergelijk het met een trainer die z\'n sterkste spelers als eerste opstelt: het werkt, maar hij kijkt niet of een andere opstelling misschien nog beter uitkomt.',
+    when: 'Als je snel wilt zien hoe de speeldag er ongeveer uitziet.',
   },
   {
     value: 'sa',
@@ -69,10 +68,9 @@ const algorithms = [
     badge: 'aanbevolen',
     badgeClass: 'border-blue-200 text-blue-700 bg-blue-50',
     description:
-      'Start vanuit de greedy oplossing en verbetert die iteratief via willekeurige aanpassingen. ' +
-      'Accepteert soms tijdelijk slechtere oplossingen om lokale optima te vermijden — vergelijkbaar met afkoelend metaal. ' +
-      'Levert significant betere resultaten dan greedy met een acceptabele rekentijd.',
-    when: 'Standaardkeuze voor de meeste speeldagen.',
+      'Begint met de greedy planning en probeert die daarna te verbeteren door wedstrijden te wisselen en te schuiven. ' +
+      'Zoals een trainer die na de eerste opstelling blijft puzzelen — af en toe een wissel terugdraaien om uiteindelijk een betere combinatie te vinden.',
+    when: 'De standaardkeuze. Geeft de beste balans tussen kwaliteit en snelheid.',
   },
   {
     value: 'milp',
@@ -80,10 +78,9 @@ const algorithms = [
     badge: 'traag',
     badgeClass: 'border-orange-200 text-orange-700 bg-orange-50',
     description:
-      'Mixed Integer Linear Programming: formuleert de planning als een wiskundig optimalisatieprobleem ' +
-      'en lost dat exact op. Gegarandeerd de beste mogelijke oplossing, maar de rekentijd groeit snel ' +
-      'bij meer wedstrijden of velden.',
-    when: 'Kleine speeldagen, of als de kwaliteit van de planning cruciaal is en tijd geen rol speelt.',
+      'Bekijkt alle mogelijke planningen en kiest de beste. Gegarandeerd het beste resultaat — maar bij veel wedstrijden kan dit minuten duren. ' +
+      'Zoals een trainer die écht elke mogelijke opstelling op papier uitwerkt voor hij een beslissing neemt.',
+    when: 'Als je het absolute maximum wilt en de tijd hebt om te wachten.',
   },
 ]
 

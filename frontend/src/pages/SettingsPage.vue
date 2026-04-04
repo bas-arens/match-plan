@@ -1,8 +1,6 @@
 <template>
   <div class="p-8 max-w-6xl mx-auto space-y-6">
 
-    <h1 class="text-xl font-bold">Instellingen</h1>
-
     <!-- TABS -->
     <div class="flex gap-8 border-b border-gray-200">
       <button
