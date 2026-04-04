@@ -48,12 +48,20 @@
 
         <table class="w-full text-sm">
           <thead>
-            <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <th class="px-6 py-3">Wedstrijd</th>
-              <th class="px-6 py-3">Tijd</th>
-              <th class="px-6 py-3">Veld</th>
-              <th class="px-6 py-3">Thuis</th>
-              <th class="px-6 py-3">Uit</th>
+            <!-- SECTION HEADERS -->
+            <tr class="text-left text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
+              <th colspan="2" class="px-6 pt-4 pb-1">Thuis</th>
+              <th colspan="2" class="px-6 pt-4 pb-1 border-l border-gray-100">Match</th>
+              <th colspan="2" class="px-6 pt-4 pb-1 border-l border-gray-100">Uit</th>
+            </tr>
+            <!-- COLUMN HEADERS -->
+            <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              <th class="px-6 py-2">Team</th>
+              <th class="px-6 py-2">Kleedkamer</th>
+              <th class="px-6 py-2 border-l border-gray-100">Tijd</th>
+              <th class="px-6 py-2">Veld</th>
+              <th class="px-6 py-2 border-l border-gray-100">Team</th>
+              <th class="px-6 py-2">Kleedkamer</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -61,17 +69,13 @@
               v-for="m in scheduled"
               :key="m.match_id"
               class="hover:bg-gray-50 transition-colors"
-              :class="{ 'bg-orange-50 hover:bg-orange-100': m.penalty > 0 }"
             >
-              <td class="px-6 py-3">
-                <span class="font-medium text-brand-dark">{{ m.home }}</span>
-                <span class="text-gray-400 mx-1.5">vs</span>
-                <span class="text-gray-600">{{ m.away }}</span>
-              </td>
-              <td class="px-6 py-3 text-gray-600 tabular-nums">{{ m.time }}</td>
-              <td class="px-6 py-3 text-gray-600">{{ m.field_name }}</td>
-              <td class="px-6 py-3 text-gray-600">{{ m.home_locker }}</td>
-              <td class="px-6 py-3 text-gray-600">
+              <td class="px-6 py-3 font-medium text-gray-800">{{ m.home }}</td>
+              <td class="px-6 py-3 text-gray-500 tabular-nums">{{ m.home_locker }}</td>
+              <td class="px-6 py-3 text-gray-800 tabular-nums border-l border-gray-100">{{ m.time }}</td>
+              <td class="px-6 py-3 text-gray-500">{{ m.field_name }}</td>
+              <td class="px-6 py-3 font-medium text-gray-800 border-l border-gray-100">{{ m.away }}</td>
+              <td class="px-6 py-3 text-gray-500 tabular-nums">
                 {{ m.away_locker }}
                 <span v-if="m.penalty > 0" class="ml-2 inline-flex items-center gap-1 text-orange-500 text-xs font-medium">
                   <TriangleAlert :size="12" />
