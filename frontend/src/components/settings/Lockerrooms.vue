@@ -53,7 +53,7 @@ onMounted(async () => {
 })
 
 function addRoom() {
-  rooms.value.push({ id: Date.now(), name: `${rooms.value.length + 1}` })
+  rooms.value.push({ id: crypto.randomUUID(), name: `${rooms.value.length + 1}` })
   saveWithDebounce()
 }
 

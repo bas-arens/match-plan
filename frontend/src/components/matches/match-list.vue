@@ -32,6 +32,6 @@
 import MatchItem from './match-item.vue'
 
 defineProps({
-  matches: Array
+  matches: { type: Array, required: true },
 })
 </script>

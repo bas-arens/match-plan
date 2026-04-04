@@ -63,7 +63,7 @@ onMounted(async () => {
 })
 
 function addField() {
-  fields.value.push({ id: Date.now(), name: `Veld ${fields.value.length + 1}`, type: 'full', surface: 'kunstgras' })
+  fields.value.push({ id: crypto.randomUUID(), name: `Veld ${fields.value.length + 1}`, type: 'full', surface: 'kunstgras' })
   saveWithDebounce()
 }
 
