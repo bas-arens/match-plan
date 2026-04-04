@@ -1,0 +1,362 @@
+[
+  {
+    "team": "De Esch 1",
+    "start": "10:45",
+    "end": "16:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch 2",
+    "start": "13:00",
+    "end": "18:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch 3",
+    "start": "12:00",
+    "end": "17:00",
+    "preferred_field_ids": [
+      1764528683057
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch 4",
+    "start": "12:00",
+    "end": "17:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch 5",
+    "start": "12:00",
+    "end": "17:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch 35+1",
+    "start": "18:00",
+    "end": "21:30",
+    "preferred_field_ids": [
+      1764528706593,
+      1764528680932
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch O21-1",
+    "start": "20:00",
+    "end": "23:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch G1",
+    "start": "12:00",
+    "end": "17:00",
+    "preferred_field_ids": [
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch G2",
+    "start": "12:00",
+    "end": "17:00",
+    "preferred_field_ids": [
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch G3",
+    "start": "12:00",
+    "end": "17:00",
+    "preferred_field_ids": [
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO19-1",
+    "start": "10:30",
+    "end": "15:30",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO19-2",
+    "start": "10:30",
+    "end": "15:30",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO17-1(disp.)",
+    "start": "10:00",
+    "end": "15:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO17-2",
+    "start": "10:00",
+    "end": "15:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO17-3",
+    "start": "10:00",
+    "end": "15:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO15-1",
+    "start": "09:30",
+    "end": "14:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO15-2JM",
+    "start": "09:00",
+    "end": "17:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO13-1",
+    "start": "09:30",
+    "end": "13:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO13-2",
+    "start": "09:30",
+    "end": "13:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO12-1JM",
+    "start": "09:00",
+    "end": "12:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO12-2JM",
+    "start": "09:00",
+    "end": "12:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO11-1",
+    "start": "09:00",
+    "end": "11:30",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528706593,
+      1764528683057
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO11-2",
+    "start": "09:00",
+    "end": "11:30",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528706593,
+      1764528683057
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO11-3",
+    "start": "09:00",
+    "end": "11:30",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528683057,
+      1764528706593,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO11-4JM",
+    "start": "09:00",
+    "end": "11:30",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528683057,
+      1764528706593,
+      1764528682993
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO10-1",
+    "start": "08:30",
+    "end": "11:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528683057,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO10-2JM",
+    "start": "08:30",
+    "end": "11:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528683057,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO9-1",
+    "start": "08:30",
+    "end": "10:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528683057,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO9-2",
+    "start": "08:30",
+    "end": "10:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528683057,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO9-3JM",
+    "start": "08:30",
+    "end": "10:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528683057,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO8-1",
+    "start": "08:30",
+    "end": "10:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO8-2",
+    "start": "08:30",
+    "end": "10:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO8-3JM",
+    "start": "08:30",
+    "end": "10:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  },
+  {
+    "team": "De Esch JO8-4",
+    "start": "09:00",
+    "end": "17:00",
+    "preferred_field_ids": [
+      1764528680932,
+      1764528682993,
+      1764528706593
+    ],
+    "avoid_surfaces": []
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1764528680932,
+    "name": "Veld 1",
+    "type": "full",
+    "surface": "natuurgras"
+  },
+  {
+    "id": 1764528682993,
+    "name": "Veld 2",
+    "type": "full",
+    "surface": "kunstgras"
+  },
+  {
+    "id": 1764528683057,
+    "name": "Veld 3",
+    "type": "half",
+    "surface": "kunstgras"
+  },
+  {
+    "id": 1764528706593,
+    "name": "Veld 4",
+    "type": "full",
+    "surface": "kunstgras"
+  }
+]

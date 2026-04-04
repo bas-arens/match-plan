@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-gray-50 text-brand-dark antialiased;
+  }
+}
+
+:root {
+  /* Override V-Calendar's green palette with your brand-primary colors */
+  --vc-green-50:  var(--brand-primary-light);
+  --vc-green-100: var(--brand-primary-light);
+  --vc-green-200: var(--brand-primary);
+  --vc-green-300: var(--brand-primary-dark);
+
+  /* Selected day background + text */
+  --vc-highlight-bg: var(--brand-primary-light);
+  --vc-highlight-content-color: var(--brand-primary);
+
+  /* Dot color (matchdays) */
+  --vc-dot-color: var(--brand-primary);
+}
+
+@layer components {
+  .mp-container {
+    @apply bg-white border border-gray-200 shadow-sm rounded-xl p-4;
+  }
+}
+
+

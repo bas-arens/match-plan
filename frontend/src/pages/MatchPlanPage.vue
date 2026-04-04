@@ -1,0 +1,92 @@
+<template>
+  <div class="p-8 space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-brand-dark">Planning</h1>
+        <p class="text-sm text-gray-500 mt-0.5">
+          {{ planStore.date }}
+          <span v-if="planStore.result?.algorithm" class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-primaryLight text-brand-dark">
+            {{ planStore.result.algorithm.toUpperCase() }}
+          </span>
+        </p>
+      </div>
+      <router-link
+        to="/calendar"
+        class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-dark transition-colors"
+      >
+        <ArrowLeft :size="16" />
+        Terug naar kalender
+      </router-link>
+    </div>
+
+    <!-- NO RESULT -->
+    <div v-if="!scheduled.length" class="flex flex-col items-center justify-center py-24 text-gray-400 space-y-3">
+      <CalendarX :size="40" stroke-width="1.5" />
+      <p class="text-sm">Geen resultaten. Genereer eerst een planning via de kalender.</p>
+    </div>
+
+    <div v-else class="space-y-6">
+
+      <!-- GANTT CHART -->
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <GanttChart :scheduled="scheduled" />
+      </div>
+
+      <!-- LOCKER TABLE -->
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <DoorOpen :size="18" class="text-gray-400" />
+          <h3 class="font-semibold text-brand-dark">Kleedkamers</h3>
+        </div>
+
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <th class="px-6 py-3">Wedstrijd</th>
+              <th class="px-6 py-3">Tijd</th>
+              <th class="px-6 py-3">Veld</th>
+              <th class="px-6 py-3">Thuis</th>
+              <th class="px-6 py-3">Uit</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr
+              v-for="m in scheduled"
+              :key="m.match_id"
+              class="hover:bg-gray-50 transition-colors"
+              :class="{ 'bg-orange-50 hover:bg-orange-100': m.penalty > 0 }"
+            >
+              <td class="px-6 py-3">
+                <span class="font-medium text-brand-dark">{{ m.home }}</span>
+                <span class="text-gray-400 mx-1.5">vs</span>
+                <span class="text-gray-600">{{ m.away }}</span>
+              </td>
+              <td class="px-6 py-3 text-gray-600 tabular-nums">{{ m.time }}</td>
+              <td class="px-6 py-3 text-gray-600">{{ m.field_name }}</td>
+              <td class="px-6 py-3 text-gray-600">{{ m.home_locker }}</td>
+              <td class="px-6 py-3 text-gray-600">
+                {{ m.away_locker }}
+                <span v-if="m.penalty > 0" class="ml-2 inline-flex items-center gap-1 text-orange-500 text-xs font-medium">
+                  <TriangleAlert :size="12" />
+                  gedeeld
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import { planStore } from '@/stores/planStore'
+import GanttChart from '@/components/schedule/GanttChart.vue'
+import { ArrowLeft, CalendarX, DoorOpen, TriangleAlert } from 'lucide-vue-next'
+
+const scheduled = computed(() => planStore.result?.scheduled ?? [])
+</script>
