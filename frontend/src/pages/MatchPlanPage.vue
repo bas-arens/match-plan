@@ -12,13 +12,44 @@
           </span>
         </p>
       </div>
-      <router-link
-        to="/calendar"
-        class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-dark transition-colors"
-      >
-        <ArrowLeft :size="16" />
-        Terug naar kalender
-      </router-link>
+
+      <div class="flex items-center gap-3">
+
+        <!-- DOWNLOAD BUTTON -->
+        <div class="relative" ref="downloadMenuRef">
+          <button
+            @click="downloadOpen = !downloadOpen"
+            class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-dark border border-gray-200 hover:border-gray-400 rounded px-3 py-1.5 transition-colors"
+          >
+            <Download :size="14" />
+            Download
+          </button>
+
+          <!-- DROPDOWN -->
+          <div
+            v-if="downloadOpen"
+            class="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded shadow-lg z-50 overflow-hidden"
+          >
+            <button
+              v-for="fmt in formats"
+              :key="fmt.id"
+              @click="handleDownload(fmt.id)"
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+            >
+              <span class="text-gray-400 font-mono text-xs w-10">{{ fmt.ext }}</span>
+              {{ fmt.label }}
+            </button>
+          </div>
+        </div>
+
+        <router-link
+          to="/calendar"
+          class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-dark transition-colors"
+        >
+          <ArrowLeft :size="16" />
+          Terug naar kalender
+        </router-link>
+      </div>
     </div>
 
     <!-- NO RESULT -->
@@ -27,7 +58,7 @@
       <p class="text-sm">Geen resultaten. Genereer eerst een planning via de kalender.</p>
     </div>
 
-    <div v-else class="space-y-6">
+    <div v-else class="space-y-6" ref="planningRef">
 
       <!-- GANTT CHART -->
       <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -99,18 +130,45 @@
 
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { planStore } from '@/stores/planStore'
 import GanttChart from '@/components/schedule/GanttChart.vue'
 import { getPreferences, getFields, getLockers } from '@/services/settings.js'
-import { ArrowLeft, CalendarX, DoorOpen, TriangleAlert } from 'lucide-vue-next'
+import { downloadCSV, downloadExcel, downloadPNG, downloadPDF } from '@/services/download.js'
+import { ArrowLeft, CalendarX, DoorOpen, TriangleAlert, Download } from 'lucide-vue-next'
 
 const scheduled    = computed(() => planStore.result?.scheduled ?? [])
 const preferences  = ref([])
 const allFields    = ref([])
 const lockers      = ref([])
+const downloadOpen = ref(false)
+const downloadMenuRef = ref(null)
+const planningRef     = ref(null)
+
+const formats = [
+  { id: 'csv',   ext: '.csv',  label: 'CSV'   },
+  { id: 'excel', ext: '.xlsx', label: 'Excel' },
+  { id: 'png',   ext: '.png',  label: 'PNG'   },
+  { id: 'pdf',   ext: '.pdf',  label: 'PDF'   },
+]
+
+async function handleDownload(fmt) {
+  downloadOpen.value = false
+  const date = planStore.date
+  if (fmt === 'csv')   downloadCSV(scheduled.value, date)
+  if (fmt === 'excel') downloadExcel(scheduled.value, date)
+  if (fmt === 'png')   await downloadPNG(planningRef.value, date)
+  if (fmt === 'pdf')   await downloadPDF(planningRef.value, date)
+}
+
+function onClickOutside(e) {
+  if (downloadMenuRef.value && !downloadMenuRef.value.contains(e.target)) {
+    downloadOpen.value = false
+  }
+}
 
 onMounted(async () => {
+  document.addEventListener('click', onClickOutside)
   const [prefs, fields, lks] = await Promise.all([
     getPreferences(),
     getFields(),
@@ -119,5 +177,9 @@ onMounted(async () => {
   preferences.value = prefs
   allFields.value   = fields
   lockers.value     = lks
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onClickOutside)
 })
 </script>
