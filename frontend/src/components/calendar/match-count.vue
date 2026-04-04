@@ -1,16 +1,11 @@
 <template>
-  <div class="p-4 bg-white rounded shadow text-center w-full h-full flex flex-col justify-center">
-
-    <!-- Count number -->
-    <div class="text-8xl font-extrabold text-brand-primary">
+  <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 text-center w-full">
+    <div class="text-7xl font-extrabold text-gray-900 dark:text-white leading-none">
       {{ count }}
     </div>
-
-    <!-- Label -->
-    <div class="mt-1 text-brand-primaryDark font-semibold">
+    <div class="mt-2 text-xs font-semibold text-gray-400 uppercase tracking-widest">
       {{ count === 1 ? 'wedstrijd' : 'wedstrijden' }}
     </div>
-
   </div>
 </template>
 

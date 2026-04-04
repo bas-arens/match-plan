@@ -25,6 +25,9 @@
           <span>{{ loading ? 'Planner draait...' : 'Plan Matchday' }}</span>
         </button>
 
+        <!-- MATCH COUNT -->
+        <MatchCount :count="matches.length" />
+
         <!-- ERROR MESSAGE -->
         <div v-if="error" class="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3">
           <CircleAlert :size="16" />
@@ -53,6 +56,7 @@ import { useRouter } from "vue-router"
 import MainLayout from "@/components/layout/main-layout.vue"
 import Calendar from "@/components/calendar/calendar.vue"
 import MatchList from "@/components/matches/match-list.vue"
+import MatchCount from "@/components/calendar/match-count.vue"
 
 import { runOptimizer } from "@/services/optimizer.js"
 import { planStore } from "@/stores/planStore.js"
