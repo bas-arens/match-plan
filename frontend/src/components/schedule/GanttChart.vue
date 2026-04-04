@@ -281,12 +281,15 @@ function blockStyle(m) {
   const width  = (m.duration / DAY_DURATION) * 100
   const top    = m.laneStart * LANE_H
   const height = m.laneCount * LANE_H
+  const color  = dotColor(m.match_id)
   return {
-    left:   `${left}%`,
-    width:  `calc(${width}% - 2px)`,
-    top:    `${top + 1}px`,
-    height: `${height - 2}px`,
-    cursor: 'grab',
+    left:            `${left}%`,
+    width:           `calc(${width}% - 2px)`,
+    top:             `${top + 1}px`,
+    height:          `${height - 2}px`,
+    cursor:          'grab',
+    backgroundColor: color + '18',
+    borderColor:     color + '55',
   }
 }
 
@@ -584,17 +587,15 @@ function positionTooltip(event) {
   position: absolute;
   display: flex;
   align-items: stretch;
-  background: white;
-  border: 1px solid #E5E7EB;
-  border-left: none;
+  border: 1px solid;
   border-radius: 2px;
   z-index: 2;
   overflow: hidden;
-  transition: background 0.1s, opacity 0.1s;
+  transition: filter 0.1s, opacity 0.1s;
 }
 
 .gantt-block:hover {
-  background: #F9FAFB;
+  filter: brightness(0.95);
   z-index: 10;
 }
 
