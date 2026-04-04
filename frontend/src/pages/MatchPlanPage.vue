@@ -31,7 +31,12 @@
 
       <!-- GANTT CHART -->
       <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-        <GanttChart :scheduled="scheduled" />
+        <GanttChart
+          :scheduled="scheduled"
+          :preferences="preferences"
+          :all-fields="allFields"
+          :lockers="lockers"
+        />
       </div>
 
       <!-- LOCKER TABLE -->
@@ -82,11 +87,27 @@
   </div>
 </template>
 
+
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { planStore } from '@/stores/planStore'
 import GanttChart from '@/components/schedule/GanttChart.vue'
+import { getPreferences, getFields, getLockers } from '@/services/settings.js'
 import { ArrowLeft, CalendarX, DoorOpen, TriangleAlert } from 'lucide-vue-next'
 
-const scheduled = computed(() => planStore.result?.scheduled ?? [])
+const scheduled    = computed(() => planStore.result?.scheduled ?? [])
+const preferences  = ref([])
+const allFields    = ref([])
+const lockers      = ref([])
+
+onMounted(async () => {
+  const [prefs, fields, lks] = await Promise.all([
+    getPreferences(),
+    getFields(),
+    getLockers(),
+  ])
+  preferences.value = prefs
+  allFields.value   = fields
+  lockers.value     = lks
+})
 </script>

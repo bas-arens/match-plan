@@ -1,9 +1,16 @@
 <template>
-  <div class="gantt-wrapper" @mousemove="onMouseMove" @mouseleave="tooltip.visible = false">
+  <div
+    class="gantt-wrapper"
+    :class="{ 'is-dragging-active': drag.active }"
+    @mousemove="onMouseMove"
+    @mouseleave="onMouseLeave"
+    @mouseup="onMouseUp"
+  >
 
     <!-- TIME HEADER -->
     <div class="gantt-header-row">
       <div class="gantt-field-label-col"></div>
+      <div class="gantt-sublane-placeholder"></div>
       <div class="gantt-timeline-header">
         <div
           v-for="hour in hours"
@@ -38,7 +45,11 @@
       </div>
 
       <!-- LANES AREA -->
-      <div class="gantt-lanes-area" :style="{ height: LANES.length * LANE_H + 'px' }">
+      <div
+        class="gantt-lanes-area"
+        :ref="el => { if (el) lanesAreaRefs[field.id] = el }"
+        :style="{ height: LANES.length * LANE_H + 'px' }"
+      >
 
         <!-- LANE BACKGROUNDS -->
         <div
@@ -56,87 +67,156 @@
           :style="{ left: hourPercent(hour) + '%' }"
         />
 
+        <!-- DROP TARGET -->
+        <div
+          v-if="drag.active && drag.targetFieldId === field.id && drag.targetTime"
+          class="gantt-drop-target"
+          :style="dropTargetStyle"
+        />
+
         <!-- MATCH BLOCKS -->
         <div
           v-for="m in laned.filter(m => m.field_id === field.id)"
           :key="m.match_id"
           class="gantt-match-block"
+          :class="{ 'is-source': drag.active && drag.matchId === m.match_id }"
           :style="blockStyle(m)"
-          @mouseenter="showTooltip(m, $event)"
+          @mousedown.prevent="onBlockMousedown(m, $event)"
+          @mouseenter="!drag.active && showTooltip(m, $event)"
           @mouseleave="tooltip.visible = false"
         >
-          <!-- Left accent bar -->
           <div class="gantt-match-accent" :style="{ backgroundColor: accentColor(m.match_id) }" />
-
           <div class="gantt-match-inner">
-            <span class="gantt-match-time">{{ m.time }}<span v-if="subFieldLabel(m)" class="gantt-match-sublabel"> · {{ m.field_name }} {{ subFieldLabel(m) }}</span></span>
+            <span class="gantt-match-time">
+              {{ m.time }}
+              <span v-if="subFieldLabel(m)" class="gantt-match-sublabel"> · {{ m.field_name }} {{ subFieldLabel(m) }}</span>
+            </span>
             <span class="gantt-match-home">{{ m.home }}</span>
             <span class="gantt-match-away">{{ m.away }}</span>
           </div>
-
-          <!-- Penalty badge -->
-          <div v-if="m.penalty > 0" class="gantt-penalty-badge">!</div>
+          <div v-if="matchHasPenalty(m.match_id)" class="gantt-penalty-badge">!</div>
         </div>
 
       </div>
     </div>
 
-    <!-- TOOLTIP -->
-    <Teleport to="body">
-      <div
-        v-if="tooltip.visible"
-        class="gantt-tooltip"
-        :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }"
-      >
-        <div class="gantt-tooltip-header">
-          <span class="gantt-tooltip-home">{{ tooltip.match?.home }}</span>
-          <span class="gantt-tooltip-sep">vs</span>
-          <span class="gantt-tooltip-away">{{ tooltip.match?.away }}</span>
+    <!-- PENALTY PANEL -->
+    <div class="penalty-panel" :class="{ 'penalty-panel--ok': penalties.total === 0 }">
+      <div class="penalty-panel-header">
+        <div class="penalty-score" :class="penalties.total === 0 ? 'score--ok' : 'score--warn'">
+          <span v-if="penalties.total === 0">✓ Geen penalties</span>
+          <span v-else>⚠ Totale penalty: <strong>{{ penalties.total }}</strong></span>
         </div>
-        <div class="gantt-tooltip-rows">
-          <div class="gantt-tooltip-row">
-            <span class="gantt-tooltip-label">Tijd</span>
-            <span>{{ tooltip.match?.time }} · {{ tooltip.match?.duration }} min</span>
-          </div>
-          <div class="gantt-tooltip-row">
-            <span class="gantt-tooltip-label">Veld</span>
-            <span>{{ tooltip.match?.field_name }}{{ tooltip.match && subFieldLabel(tooltip.match) ? ' ' + subFieldLabel(tooltip.match) : '' }}</span>
-          </div>
-          <div class="gantt-tooltip-row">
-            <span class="gantt-tooltip-label">Kleedkamers</span>
-            <span>{{ tooltip.match?.home_locker }} / {{ tooltip.match?.away_locker }}</span>
-          </div>
-          <div v-if="tooltip.match?.penalty > 0" class="gantt-tooltip-warning">
-            ⚠ Kleedkamer gedeeld
-          </div>
+        <span v-if="drag.active" class="penalty-hint">Versleep een wedstrijd om te optimaliseren</span>
+      </div>
+      <div v-if="penalties.items.length > 0" class="penalty-list">
+        <div
+          v-for="(item, i) in penalties.items"
+          :key="i"
+          class="penalty-item"
+          :class="`penalty-item--${item.type}`"
+        >
+          <span class="penalty-item-dot" />
+          <span class="penalty-item-label">{{ item.label }}</span>
+          <span class="penalty-item-points">+{{ item.points }}</span>
         </div>
       </div>
-    </Teleport>
+    </div>
 
   </div>
+
+  <!-- GHOST BLOCK (follows cursor while dragging) -->
+  <Teleport to="body">
+    <div
+      v-if="drag.active && dragMatch"
+      class="gantt-ghost"
+      :style="ghostStyle"
+    >
+      <div class="gantt-match-accent" :style="{ backgroundColor: accentColor(dragMatch.match_id) }" />
+      <div class="gantt-match-inner">
+        <span class="gantt-match-time">{{ drag.targetTime ?? dragMatch.time }}</span>
+        <span class="gantt-match-home">{{ dragMatch.home }}</span>
+        <span class="gantt-match-away">{{ dragMatch.away }}</span>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- TOOLTIP -->
+  <Teleport to="body">
+    <div
+      v-if="tooltip.visible && !drag.active"
+      class="gantt-tooltip"
+      :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }"
+    >
+      <div class="gantt-tooltip-header">
+        <span class="gantt-tooltip-home">{{ tooltip.match?.home }}</span>
+        <span class="gantt-tooltip-sep">vs</span>
+        <span class="gantt-tooltip-away">{{ tooltip.match?.away }}</span>
+      </div>
+      <div class="gantt-tooltip-rows">
+        <div class="gantt-tooltip-row">
+          <span class="gantt-tooltip-label">Tijd</span>
+          <span>{{ tooltip.match?.time }} · {{ tooltip.match?.duration }} min</span>
+        </div>
+        <div class="gantt-tooltip-row">
+          <span class="gantt-tooltip-label">Veld</span>
+          <span>{{ tooltip.match?.field_name }}{{ tooltip.match && subFieldLabel(tooltip.match) ? ' ' + subFieldLabel(tooltip.match) : '' }}</span>
+        </div>
+        <div class="gantt-tooltip-row">
+          <span class="gantt-tooltip-label">Kleedkamers</span>
+          <span>{{ tooltip.match?.home_locker }} / {{ tooltip.match?.away_locker }}</span>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
+
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 const props = defineProps({
-  scheduled: { type: Array, required: true },
+  scheduled:   { type: Array, required: true },
+  preferences: { type: Array, default: () => [] },
+  allFields:   { type: Array, default: () => [] },
+  lockers:     { type: Array, default: () => [] },
 })
 
 // ─── CONSTANTS ───────────────────────────────────────────────
 const DAY_START    = 8 * 60
 const DAY_END      = 20 * 60
 const DAY_DURATION = DAY_END - DAY_START
+const SLOT_SIZE    = 15
 
 const LANE_H      = 52
 const LANES       = ['A', 'B', 'C', 'D']
 const LANE_LABELS = ['A1', 'A2', 'B1', 'B2']
 const hours       = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
+const LOCKER_BUFFER          = 20
+const LOCKER_PENALTY         = 50
+const FIELD_PREF_PENALTY     = 30
+const SURFACE_AVOID_PENALTY  = 40
+const TEAM_OVERLAP_PENALTY   = 500
+
+// ─── LOCAL SCHEDULE ──────────────────────────────────────────
+const localSchedule = ref([...props.scheduled])
+
+watch(() => props.scheduled, val => {
+  localSchedule.value = [...val]
+}, { deep: true })
+
 // ─── HELPERS ─────────────────────────────────────────────────
 function toMin(t) {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
+}
+
+function minToTime(min) {
+  const clamped = Math.max(DAY_START, Math.min(DAY_END - SLOT_SIZE, min))
+  const h = Math.floor(clamped / 60)
+  const m = clamped % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
 function laneCount(fieldSize) {
@@ -153,10 +233,10 @@ function subFieldLabel(m) {
   return LANE_LABELS[m.laneStart] ?? ''
 }
 
-// ─── FIELDS ──────────────────────────────────────────────────
+// ─── FIELDS (derived from local schedule) ────────────────────
 const fields = computed(() => {
   const seen = new Map()
-  for (const m of props.scheduled) {
+  for (const m of localSchedule.value) {
     if (!seen.has(m.field_id)) {
       seen.set(m.field_id, {
         id:      m.field_id,
@@ -173,7 +253,7 @@ const laned = computed(() => {
   const result = []
 
   for (const field of fields.value) {
-    const fieldMatches = props.scheduled
+    const fieldMatches = localSchedule.value
       .filter(m => m.field_id === field.id)
       .sort((a, b) => toMin(a.time) - toMin(b.time))
 
@@ -202,6 +282,238 @@ const laned = computed(() => {
   }
 
   return result
+})
+
+// ─── PENALTY CALCULATION ─────────────────────────────────────
+const penalties = computed(() => {
+  const items = []
+  let total = 0
+
+  const sched = localSchedule.value.map(m => ({
+    ...m,
+    startMin: toMin(m.time),
+    endMin:   toMin(m.time) + m.duration,
+  }))
+
+  // Per-match: window, field preference, surface
+  for (const m of sched) {
+    const pref = props.preferences.find(p => p.team === m.home)
+    if (!pref) continue
+
+    const ws = toMin(pref.start)
+    const we = toMin(pref.end)
+    let win = 0
+    if (m.startMin < ws)      win = ws - m.startMin
+    else if (m.startMin > we) win = m.startMin - we
+    if (win > 0) {
+      total += win
+      items.push({ type: 'window', match_id: m.match_id, points: win,
+        label: `${m.home}: ${win} min buiten tijdvenster` })
+    }
+
+    const preferredIds = pref.preferred_field_ids ?? []
+    if (preferredIds.length > 0 && !preferredIds.includes(m.field_id)) {
+      total += FIELD_PREF_PENALTY
+      items.push({ type: 'field', match_id: m.match_id, points: FIELD_PREF_PENALTY,
+        label: `${m.home}: niet op voorkeursveld` })
+    }
+
+    const avoidSurfaces = pref.avoid_surfaces ?? []
+    const field = props.allFields.find(f => f.id === m.field_id)
+    if (field && avoidSurfaces.includes(field.surface)) {
+      total += SURFACE_AVOID_PENALTY
+      items.push({ type: 'surface', match_id: m.match_id, points: SURFACE_AVOID_PENALTY,
+        label: `${m.home}: speelt op vermeden ondergrond (${field.surface})` })
+    }
+  }
+
+  // Team overlaps
+  for (let i = 0; i < sched.length; i++) {
+    for (let j = i + 1; j < sched.length; j++) {
+      const a = sched[i], b = sched[j]
+      if (a.startMin < b.endMin && b.startMin < a.endMin) {
+        const clash = a.home === b.home || a.home === b.away ||
+                      a.away === b.home || a.away === b.away
+        if (clash) {
+          total += TEAM_OVERLAP_PENALTY
+          items.push({ type: 'overlap', match_id: a.match_id, points: TEAM_OVERLAP_PENALTY,
+            label: `${a.home} & ${b.home}: team speelt tegelijk` })
+        }
+      }
+    }
+  }
+
+  // Locker sharing simulation
+  if (props.lockers.length >= 2) {
+    const placed = []
+    const sorted = [...sched].sort((a, b) => a.startMin - b.startMin)
+
+    for (const m of sorted) {
+      const lkStart = m.startMin - LOCKER_BUFFER
+      const lkEnd   = m.endMin   + LOCKER_BUFFER
+
+      const free = props.lockers.filter(lk =>
+        !placed.some(p =>
+          (p.home_locker === lk.id || p.away_locker === lk.id) &&
+          p.lk_start < lkEnd && p.lk_start + p.lk_dur > lkStart
+        )
+      )
+
+      let penalty = 0
+      let homeLk, awayLk
+      if (free.length >= 2) {
+        ;[homeLk, awayLk] = free
+      } else if (free.length === 1) {
+        homeLk  = free[0]
+        awayLk  = props.lockers.find(lk => lk.id !== homeLk.id)
+        penalty = LOCKER_PENALTY
+      } else {
+        ;[homeLk, awayLk] = props.lockers
+        penalty = LOCKER_PENALTY * 2
+      }
+
+      if (penalty > 0) {
+        total += penalty
+        items.push({ type: 'locker', match_id: m.match_id, points: penalty,
+          label: `${m.home}: kleedkamer gedeeld` })
+      }
+
+      placed.push({
+        home_locker: homeLk.id, away_locker: awayLk.id,
+        lk_start: lkStart, lk_dur: lkEnd - lkStart,
+      })
+    }
+  }
+
+  return { total, items }
+})
+
+const penaltyMatchIds = computed(() => new Set(penalties.value.items.map(p => p.match_id)))
+
+function matchHasPenalty(matchId) {
+  return penaltyMatchIds.value.has(matchId)
+}
+
+// ─── DRAG ────────────────────────────────────────────────────
+const lanesAreaRefs = {}
+
+const drag = reactive({
+  active:        false,
+  matchId:       null,
+  mouseX:        0,
+  mouseY:        0,
+  targetFieldId: null,
+  targetTime:    null,
+})
+
+const dragMatch = computed(() =>
+  drag.matchId ? laned.value.find(m => m.match_id === drag.matchId) : null
+)
+
+function onBlockMousedown(m, event) {
+  drag.active        = true
+  drag.matchId       = m.match_id
+  drag.mouseX        = event.clientX
+  drag.mouseY        = event.clientY
+  drag.targetFieldId = m.field_id
+  drag.targetTime    = m.time
+  tooltip.visible    = false
+  window.addEventListener('mouseup', commitDrag, { once: true })
+}
+
+function onMouseMove(event) {
+  drag.mouseX = event.clientX
+  drag.mouseY = event.clientY
+
+  if (!drag.active) {
+    positionTooltip(event)
+    return
+  }
+
+  for (const f of fields.value) {
+    const el = lanesAreaRefs[f.id]
+    if (!el) continue
+    const rect = el.getBoundingClientRect()
+    if (event.clientY >= rect.top && event.clientY <= rect.bottom) {
+      drag.targetFieldId = f.id
+      const relX    = event.clientX - rect.left
+      const frac    = Math.max(0, Math.min(1, relX / rect.width))
+      const rawMin  = DAY_START + frac * DAY_DURATION
+      const snapped = Math.round(rawMin / SLOT_SIZE) * SLOT_SIZE
+      drag.targetTime = minToTime(snapped)
+      break
+    }
+  }
+}
+
+function onMouseLeave() {
+  tooltip.visible = false
+}
+
+function onMouseUp() {
+  commitDrag()
+}
+
+function commitDrag() {
+  if (drag.active && drag.targetFieldId && drag.targetTime) {
+    const idx = localSchedule.value.findIndex(m => m.match_id === drag.matchId)
+    if (idx !== -1) {
+      const field = fields.value.find(f => f.id === drag.targetFieldId)
+        ?? props.allFields.find(f => f.id === drag.targetFieldId)
+      localSchedule.value[idx] = {
+        ...localSchedule.value[idx],
+        field_id:   drag.targetFieldId,
+        field_name: field?.name ?? drag.targetFieldId,
+        time:       drag.targetTime,
+      }
+    }
+  }
+  drag.active  = false
+  drag.matchId = null
+  window.removeEventListener('mouseup', commitDrag)
+}
+
+const ghostStyle = computed(() => {
+  if (!drag.active || !dragMatch.value) return { display: 'none' }
+  const colors = colorMap.value[drag.matchId]
+  return {
+    position:         'fixed',
+    left:             drag.mouseX + 'px',
+    top:              drag.mouseY + 'px',
+    width:            '180px',
+    height:           '52px',
+    zIndex:           9999,
+    pointerEvents:    'none',
+    transform:        'translate(-8px, -12px)',
+    borderRadius:     '6px',
+    border:           '1px solid',
+    overflow:         'hidden',
+    display:          'flex',
+    backgroundColor:  colors?.bg  ?? '#F3F4F6',
+    borderColor:      colors?.border ?? '#D1D5DB',
+    boxShadow:        '0 4px 20px rgba(0,0,0,0.20)',
+    opacity:          '0.92',
+  }
+})
+
+const dropTargetStyle = computed(() => {
+  if (!drag.active || !drag.targetTime || !dragMatch.value) return {}
+  const m = dragMatch.value
+  const startMin = toMin(drag.targetTime)
+  const left  = ((startMin - DAY_START) / DAY_DURATION) * 100
+  const width = (m.duration / DAY_DURATION) * 100
+  return {
+    position:     'absolute',
+    left:         `${left}%`,
+    width:        `calc(${width}% - 3px)`,
+    top:          '2px',
+    height:       `${LANES.length * LANE_H - 4}px`,
+    background:   'rgba(59, 130, 246, 0.08)',
+    border:       '2px dashed #3B82F6',
+    borderRadius: '6px',
+    zIndex:       1,
+    pointerEvents:'none',
+  }
 })
 
 // ─── COLORS ──────────────────────────────────────────────────
@@ -242,8 +554,9 @@ function blockStyle(m) {
     width:           `calc(${width}% - 3px)`,
     top:             `${top + 2}px`,
     height:          `${height - 4}px`,
-    backgroundColor: colors?.bg ?? '#F3F4F6',
+    backgroundColor: colors?.bg  ?? '#F3F4F6',
     borderColor:     colors?.border ?? '#D1D5DB',
+    cursor:          'grab',
   }
 }
 
@@ -256,15 +569,12 @@ function showTooltip(m, event) {
   positionTooltip(event)
 }
 
-function onMouseMove(event) {
-  if (tooltip.visible) positionTooltip(event)
-}
-
 function positionTooltip(event) {
   tooltip.x = event.clientX + 16
   tooltip.y = event.clientY + 16
 }
 </script>
+
 
 <style scoped>
 .gantt-wrapper {
@@ -274,11 +584,20 @@ function positionTooltip(event) {
   overflow-x: auto;
 }
 
+.is-dragging-active {
+  cursor: grabbing;
+}
+
 /* HEADER */
 .gantt-header-row {
   display: flex;
   height: 28px;
   margin-bottom: 6px;
+}
+
+.gantt-sublane-placeholder {
+  width: 28px;
+  min-width: 28px;
 }
 
 .gantt-timeline-header {
@@ -390,15 +709,18 @@ function positionTooltip(event) {
   border: 1px solid;
   z-index: 2;
   overflow: hidden;
-  cursor: default;
   display: flex;
-  transition: filter 0.15s, box-shadow 0.15s;
+  transition: filter 0.1s, box-shadow 0.1s, opacity 0.1s;
 }
 
 .gantt-match-block:hover {
   filter: brightness(0.97);
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   z-index: 10;
+}
+
+.gantt-match-block.is-source {
+  opacity: 0.25;
 }
 
 /* LEFT ACCENT */
@@ -464,6 +786,93 @@ function positionTooltip(event) {
   justify-content: center;
 }
 
+/* GHOST BLOCK */
+.gantt-ghost {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  user-select: none;
+}
+
+/* ─── PENALTY PANEL ─────────────────────────────────────── */
+.penalty-panel {
+  margin-top: 16px;
+  border-radius: 12px;
+  border: 1px solid #FED7AA;
+  background: #FFF7ED;
+  overflow: hidden;
+}
+
+.penalty-panel--ok {
+  border-color: #A7F3D0;
+  background: #F0FDF4;
+}
+
+.penalty-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+
+.penalty-score {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.score--warn { color: #C2410C; }
+.score--ok   { color: #065F46; }
+
+.penalty-hint {
+  font-size: 11px;
+  color: #9CA3AF;
+  font-style: italic;
+}
+
+.penalty-list {
+  border-top: 1px solid #FED7AA;
+  display: flex;
+  flex-direction: column;
+}
+
+.penalty-panel--ok .penalty-list {
+  border-top-color: #A7F3D0;
+}
+
+.penalty-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  font-size: 12px;
+  color: #374151;
+}
+
+.penalty-item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #F97316;
+}
+
+.penalty-item--overlap .penalty-item-dot  { background: #EF4444; }
+.penalty-item--window  .penalty-item-dot  { background: #F59E0B; }
+.penalty-item--locker  .penalty-item-dot  { background: #F97316; }
+.penalty-item--field   .penalty-item-dot  { background: #8B5CF6; }
+.penalty-item--surface .penalty-item-dot  { background: #06B6D4; }
+
+.penalty-item-label {
+  flex: 1;
+}
+
+.penalty-item-points {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9A3412;
+  white-space: nowrap;
+}
+
 /* TOOLTIP */
 .gantt-tooltip {
   position: fixed;
@@ -521,12 +930,5 @@ function positionTooltip(event) {
   color: #9CA3AF;
   font-weight: 500;
   white-space: nowrap;
-}
-
-.gantt-tooltip-warning {
-  margin-top: 6px;
-  font-size: 11px;
-  color: #F97316;
-  font-weight: 600;
 }
 </style>
