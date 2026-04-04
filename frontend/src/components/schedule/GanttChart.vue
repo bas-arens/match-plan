@@ -9,7 +9,7 @@
 
     <!-- TIME HEADER -->
     <div class="gantt-header-row">
-      <div class="gantt-field-label-col"></div>
+      <div class="gantt-label-col"></div>
       <div class="gantt-sublane-placeholder"></div>
       <div class="gantt-timeline-header">
         <div
@@ -17,53 +17,44 @@
           :key="hour"
           class="gantt-hour-mark"
           :style="{ left: hourPercent(hour) + '%' }"
-        >
-          {{ String(hour).padStart(2, '0') }}:00
-        </div>
+        >{{ String(hour).padStart(2, '0') }}:00</div>
       </div>
     </div>
 
-    <!-- ONE SECTION PER FIELD -->
-    <div v-for="field in fields" :key="field.id" class="gantt-field-section">
+    <!-- FIELD ROWS -->
+    <div v-for="field in fields" :key="field.id" class="gantt-field-row">
 
-      <!-- FIELD LABEL -->
-      <div class="gantt-field-label-col">
+      <div class="gantt-label-col">
         <span class="gantt-field-name">{{ field.name }}</span>
-        <span class="gantt-field-surface">{{ field.surface || '' }}</span>
       </div>
 
-      <!-- SUB-FIELD LABEL COLUMN -->
       <div class="gantt-sublane-col" :style="{ height: LANES.length * LANE_H + 'px' }">
         <div
           v-for="(label, i) in LANE_LABELS"
           :key="label"
           class="gantt-sublane-label"
           :style="{ top: i * LANE_H + 'px', height: LANE_H + 'px' }"
-        >
-          {{ label }}
-        </div>
+        >{{ label }}</div>
       </div>
 
-      <!-- LANES AREA -->
       <div
         class="gantt-lanes-area"
         :ref="el => { if (el) lanesAreaRefs[field.id] = el }"
         :style="{ height: LANES.length * LANE_H + 'px' }"
       >
-
-        <!-- LANE BACKGROUNDS -->
+        <!-- LANE STRIPES -->
         <div
           v-for="(lane, i) in LANES"
           :key="lane"
-          class="gantt-lane-row"
+          class="gantt-lane-stripe"
           :style="{ top: i * LANE_H + 'px', height: LANE_H + 'px' }"
         />
 
-        <!-- HOUR GRID LINES -->
+        <!-- HOUR TICKS -->
         <div
           v-for="hour in hours"
-          :key="'grid-' + hour"
-          class="gantt-grid-line"
+          :key="'g-' + hour"
+          class="gantt-tick"
           :style="{ left: hourPercent(hour) + '%' }"
         />
 
@@ -78,65 +69,60 @@
         <div
           v-for="m in laned.filter(m => m.field_id === field.id)"
           :key="m.match_id"
-          class="gantt-match-block"
+          class="gantt-block"
           :class="{ 'is-source': drag.active && drag.matchId === m.match_id }"
           :style="blockStyle(m)"
           @mousedown.prevent="onBlockMousedown(m, $event)"
           @mouseenter="!drag.active && showTooltip(m, $event)"
           @mouseleave="tooltip.visible = false"
         >
-          <div class="gantt-match-accent" :style="{ backgroundColor: accentColor(m.match_id) }" />
-          <div class="gantt-match-inner">
-            <span class="gantt-match-time">
-              {{ m.time }}
-              <span v-if="subFieldLabel(m)" class="gantt-match-sublabel"> · {{ m.field_name }} {{ subFieldLabel(m) }}</span>
-            </span>
-            <span class="gantt-match-home">{{ m.home }}</span>
-            <span class="gantt-match-away">{{ m.away }}</span>
+          <div class="gantt-block-bar" :style="{ backgroundColor: dotColor(m.match_id) }" />
+          <div class="gantt-block-text">
+            <span class="gantt-block-home">{{ m.home }}</span>
+            <span class="gantt-block-meta">{{ m.time }}<span v-if="subFieldLabel(m)"> · {{ m.field_name }} {{ subFieldLabel(m) }}</span></span>
           </div>
-          <div v-if="matchHasPenalty(m.match_id)" class="gantt-penalty-badge">!</div>
+          <div v-if="matchHasPenalty(m.match_id)" class="gantt-block-warn">!</div>
         </div>
 
       </div>
     </div>
 
     <!-- PENALTY PANEL -->
-    <div class="penalty-panel" :class="{ 'penalty-panel--ok': penalties.total === 0 }">
-      <div class="penalty-panel-header">
-        <div class="penalty-score" :class="penalties.total === 0 ? 'score--ok' : 'score--warn'">
-          <span v-if="penalties.total === 0">✓ Geen penalties</span>
-          <span v-else>⚠ Totale penalty: <strong>{{ penalties.total }}</strong></span>
-        </div>
-        <span v-if="drag.active" class="penalty-hint">Versleep een wedstrijd om te optimaliseren</span>
+    <div class="penalty-panel">
+      <div class="penalty-header">
+        <span class="penalty-title">PENALTIES</span>
+        <span class="penalty-total" :class="penalties.total === 0 ? 'total--ok' : 'total--warn'">
+          total: {{ penalties.total }}
+        </span>
       </div>
-      <div v-if="penalties.items.length > 0" class="penalty-list">
+
+      <div v-if="penalties.total === 0" class="penalty-empty">
+        ● geen penalties
+      </div>
+
+      <div v-else class="penalty-list">
         <div
           v-for="(item, i) in penalties.items"
           :key="i"
-          class="penalty-item"
-          :class="`penalty-item--${item.type}`"
+          class="penalty-row"
         >
-          <span class="penalty-item-dot" />
-          <span class="penalty-item-label">{{ item.label }}</span>
-          <span class="penalty-item-points">+{{ item.points }}</span>
+          <span class="penalty-dot" :style="{ backgroundColor: PENALTY_COLORS[item.type] }" />
+          <span class="penalty-type">{{ item.type }}</span>
+          <span class="penalty-label">{{ item.label }}</span>
+          <span class="penalty-pts">+{{ item.points }}</span>
         </div>
       </div>
     </div>
 
   </div>
 
-  <!-- GHOST BLOCK (follows cursor while dragging) -->
+  <!-- GHOST -->
   <Teleport to="body">
-    <div
-      v-if="drag.active && dragMatch"
-      class="gantt-ghost"
-      :style="ghostStyle"
-    >
-      <div class="gantt-match-accent" :style="{ backgroundColor: accentColor(dragMatch.match_id) }" />
-      <div class="gantt-match-inner">
-        <span class="gantt-match-time">{{ drag.targetTime ?? dragMatch.time }}</span>
-        <span class="gantt-match-home">{{ dragMatch.home }}</span>
-        <span class="gantt-match-away">{{ dragMatch.away }}</span>
+    <div v-if="drag.active && dragMatch" class="gantt-ghost" :style="ghostStyle">
+      <div class="gantt-block-bar" :style="{ backgroundColor: dotColor(dragMatch.match_id) }" />
+      <div class="gantt-block-text">
+        <span class="gantt-block-home">{{ dragMatch.home }}</span>
+        <span class="gantt-block-meta">{{ drag.targetTime ?? dragMatch.time }}</span>
       </div>
     </div>
   </Teleport>
@@ -148,24 +134,16 @@
       class="gantt-tooltip"
       :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }"
     >
-      <div class="gantt-tooltip-header">
-        <span class="gantt-tooltip-home">{{ tooltip.match?.home }}</span>
-        <span class="gantt-tooltip-sep">vs</span>
-        <span class="gantt-tooltip-away">{{ tooltip.match?.away }}</span>
+      <div class="tt-line tt-home">
+        {{ tooltip.match?.home }}
+        <span class="tt-vs">vs</span>
+        {{ tooltip.match?.away }}
       </div>
-      <div class="gantt-tooltip-rows">
-        <div class="gantt-tooltip-row">
-          <span class="gantt-tooltip-label">Tijd</span>
-          <span>{{ tooltip.match?.time }} · {{ tooltip.match?.duration }} min</span>
-        </div>
-        <div class="gantt-tooltip-row">
-          <span class="gantt-tooltip-label">Veld</span>
-          <span>{{ tooltip.match?.field_name }}{{ tooltip.match && subFieldLabel(tooltip.match) ? ' ' + subFieldLabel(tooltip.match) : '' }}</span>
-        </div>
-        <div class="gantt-tooltip-row">
-          <span class="gantt-tooltip-label">Kleedkamers</span>
-          <span>{{ tooltip.match?.home_locker }} / {{ tooltip.match?.away_locker }}</span>
-        </div>
+      <div class="tt-line tt-meta">
+        {{ tooltip.match?.time }} · {{ tooltip.match?.duration }} min · {{ tooltip.match?.field_name }}{{ tooltip.match && subFieldLabel(tooltip.match) ? ' ' + subFieldLabel(tooltip.match) : '' }}
+      </div>
+      <div class="tt-line tt-lockers">
+        kleedkamers: {{ tooltip.match?.home_locker }} / {{ tooltip.match?.away_locker }}
       </div>
     </div>
   </Teleport>
@@ -188,16 +166,29 @@ const DAY_END      = 20 * 60
 const DAY_DURATION = DAY_END - DAY_START
 const SLOT_SIZE    = 15
 
-const LANE_H      = 52
+const LANE_H      = 44
 const LANES       = ['A', 'B', 'C', 'D']
 const LANE_LABELS = ['A1', 'A2', 'B1', 'B2']
 const hours       = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
-const LOCKER_BUFFER          = 20
-const LOCKER_PENALTY         = 50
-const FIELD_PREF_PENALTY     = 30
-const SURFACE_AVOID_PENALTY  = 40
-const TEAM_OVERLAP_PENALTY   = 500
+const LOCKER_BUFFER         = 20
+const LOCKER_PENALTY        = 50
+const FIELD_PREF_PENALTY    = 30
+const SURFACE_AVOID_PENALTY = 40
+const TEAM_OVERLAP_PENALTY  = 500
+
+const DOT_COLORS = [
+  '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B',
+  '#F43F5E', '#06B6D4', '#D946EF', '#84CC16',
+]
+
+const PENALTY_COLORS = {
+  window:  '#EAB308',
+  locker:  '#F97316',
+  overlap: '#EF4444',
+  field:   '#8B5CF6',
+  surface: '#06B6D4',
+}
 
 // ─── LOCAL SCHEDULE ──────────────────────────────────────────
 const localSchedule = ref([...props.scheduled])
@@ -233,37 +224,30 @@ function subFieldLabel(m) {
   return LANE_LABELS[m.laneStart] ?? ''
 }
 
-// ─── FIELDS (derived from local schedule) ────────────────────
+// ─── FIELDS ──────────────────────────────────────────────────
 const fields = computed(() => {
   const seen = new Map()
   for (const m of localSchedule.value) {
     if (!seen.has(m.field_id)) {
-      seen.set(m.field_id, {
-        id:      m.field_id,
-        name:    m.field_name,
-        surface: m.field_surface ?? null,
-      })
+      seen.set(m.field_id, { id: m.field_id, name: m.field_name })
     }
   }
   return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name))
 })
 
-// ─── LANE BIN-PACKING ────────────────────────────────────────
+// ─── BIN-PACKING ─────────────────────────────────────────────
 const laned = computed(() => {
   const result = []
-
   for (const field of fields.value) {
     const fieldMatches = localSchedule.value
       .filter(m => m.field_id === field.id)
       .sort((a, b) => toMin(a.time) - toMin(b.time))
 
     const laneEnd = [0, 0, 0, 0]
-
     for (const m of fieldMatches) {
       const start = toMin(m.time)
       const end   = start + m.duration
       const count = laneCount(m.field_size)
-
       let laneStart = 0
       outer: for (let i = 0; i <= 4 - count; i++) {
         for (let j = i; j < i + count; j++) {
@@ -272,17 +256,39 @@ const laned = computed(() => {
         laneStart = i
         break
       }
-
-      for (let j = laneStart; j < laneStart + count; j++) {
-        laneEnd[j] = end
-      }
-
+      for (let j = laneStart; j < laneStart + count; j++) laneEnd[j] = end
       result.push({ ...m, laneStart, laneCount: count })
     }
   }
-
   return result
 })
+
+// ─── COLORS ──────────────────────────────────────────────────
+const colorIndex = computed(() => {
+  const map = {}
+  props.scheduled.forEach((m, i) => { map[m.match_id] = i % DOT_COLORS.length })
+  return map
+})
+
+function dotColor(matchId) {
+  return DOT_COLORS[colorIndex.value[matchId] ?? 0]
+}
+
+// ─── BLOCK STYLE ─────────────────────────────────────────────
+function blockStyle(m) {
+  const startMin = toMin(m.time)
+  const left   = ((startMin - DAY_START) / DAY_DURATION) * 100
+  const width  = (m.duration / DAY_DURATION) * 100
+  const top    = m.laneStart * LANE_H
+  const height = m.laneCount * LANE_H
+  return {
+    left:   `${left}%`,
+    width:  `calc(${width}% - 2px)`,
+    top:    `${top + 1}px`,
+    height: `${height - 2}px`,
+    cursor: 'grab',
+  }
+}
 
 // ─── PENALTY CALCULATION ─────────────────────────────────────
 const penalties = computed(() => {
@@ -290,18 +296,14 @@ const penalties = computed(() => {
   let total = 0
 
   const sched = localSchedule.value.map(m => ({
-    ...m,
-    startMin: toMin(m.time),
-    endMin:   toMin(m.time) + m.duration,
+    ...m, startMin: toMin(m.time), endMin: toMin(m.time) + m.duration,
   }))
 
-  // Per-match: window, field preference, surface
   for (const m of sched) {
     const pref = props.preferences.find(p => p.team === m.home)
     if (!pref) continue
 
-    const ws = toMin(pref.start)
-    const we = toMin(pref.end)
+    const ws = toMin(pref.start), we = toMin(pref.end)
     let win = 0
     if (m.startMin < ws)      win = ws - m.startMin
     else if (m.startMin > we) win = m.startMin - we
@@ -327,7 +329,6 @@ const penalties = computed(() => {
     }
   }
 
-  // Team overlaps
   for (let i = 0; i < sched.length; i++) {
     for (let j = i + 1; j < sched.length; j++) {
       const a = sched[i], b = sched[j]
@@ -343,45 +344,29 @@ const penalties = computed(() => {
     }
   }
 
-  // Locker sharing simulation
   if (props.lockers.length >= 2) {
     const placed = []
     const sorted = [...sched].sort((a, b) => a.startMin - b.startMin)
-
     for (const m of sorted) {
       const lkStart = m.startMin - LOCKER_BUFFER
       const lkEnd   = m.endMin   + LOCKER_BUFFER
-
       const free = props.lockers.filter(lk =>
         !placed.some(p =>
           (p.home_locker === lk.id || p.away_locker === lk.id) &&
           p.lk_start < lkEnd && p.lk_start + p.lk_dur > lkStart
         )
       )
-
-      let penalty = 0
-      let homeLk, awayLk
-      if (free.length >= 2) {
-        ;[homeLk, awayLk] = free
-      } else if (free.length === 1) {
-        homeLk  = free[0]
-        awayLk  = props.lockers.find(lk => lk.id !== homeLk.id)
-        penalty = LOCKER_PENALTY
-      } else {
-        ;[homeLk, awayLk] = props.lockers
-        penalty = LOCKER_PENALTY * 2
-      }
+      let penalty = 0, homeLk, awayLk
+      if (free.length >= 2)      { ;[homeLk, awayLk] = free }
+      else if (free.length === 1) { homeLk = free[0]; awayLk = props.lockers.find(l => l.id !== homeLk.id); penalty = LOCKER_PENALTY }
+      else                        { ;[homeLk, awayLk] = props.lockers; penalty = LOCKER_PENALTY * 2 }
 
       if (penalty > 0) {
         total += penalty
         items.push({ type: 'locker', match_id: m.match_id, points: penalty,
           label: `${m.home}: kleedkamer gedeeld` })
       }
-
-      placed.push({
-        home_locker: homeLk.id, away_locker: awayLk.id,
-        lk_start: lkStart, lk_dur: lkEnd - lkStart,
-      })
+      placed.push({ home_locker: homeLk.id, away_locker: awayLk.id, lk_start: lkStart, lk_dur: lkEnd - lkStart })
     }
   }
 
@@ -389,21 +374,14 @@ const penalties = computed(() => {
 })
 
 const penaltyMatchIds = computed(() => new Set(penalties.value.items.map(p => p.match_id)))
-
-function matchHasPenalty(matchId) {
-  return penaltyMatchIds.value.has(matchId)
-}
+function matchHasPenalty(id) { return penaltyMatchIds.value.has(id) }
 
 // ─── DRAG ────────────────────────────────────────────────────
 const lanesAreaRefs = {}
-
 const drag = reactive({
-  active:        false,
-  matchId:       null,
-  mouseX:        0,
-  mouseY:        0,
-  targetFieldId: null,
-  targetTime:    null,
+  active: false, matchId: null,
+  mouseX: 0, mouseY: 0,
+  targetFieldId: null, targetTime: null,
 })
 
 const dragMatch = computed(() =>
@@ -411,48 +389,32 @@ const dragMatch = computed(() =>
 )
 
 function onBlockMousedown(m, event) {
-  drag.active        = true
-  drag.matchId       = m.match_id
-  drag.mouseX        = event.clientX
-  drag.mouseY        = event.clientY
-  drag.targetFieldId = m.field_id
-  drag.targetTime    = m.time
-  tooltip.visible    = false
+  drag.active = true; drag.matchId = m.match_id
+  drag.mouseX = event.clientX; drag.mouseY = event.clientY
+  drag.targetFieldId = m.field_id; drag.targetTime = m.time
+  tooltip.visible = false
   window.addEventListener('mouseup', commitDrag, { once: true })
 }
 
 function onMouseMove(event) {
-  drag.mouseX = event.clientX
-  drag.mouseY = event.clientY
-
-  if (!drag.active) {
-    positionTooltip(event)
-    return
-  }
-
+  drag.mouseX = event.clientX; drag.mouseY = event.clientY
+  if (!drag.active) { positionTooltip(event); return }
   for (const f of fields.value) {
     const el = lanesAreaRefs[f.id]
     if (!el) continue
     const rect = el.getBoundingClientRect()
     if (event.clientY >= rect.top && event.clientY <= rect.bottom) {
       drag.targetFieldId = f.id
-      const relX    = event.clientX - rect.left
-      const frac    = Math.max(0, Math.min(1, relX / rect.width))
-      const rawMin  = DAY_START + frac * DAY_DURATION
-      const snapped = Math.round(rawMin / SLOT_SIZE) * SLOT_SIZE
+      const frac    = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+      const snapped = Math.round((DAY_START + frac * DAY_DURATION) / SLOT_SIZE) * SLOT_SIZE
       drag.targetTime = minToTime(snapped)
       break
     }
   }
 }
 
-function onMouseLeave() {
-  tooltip.visible = false
-}
-
-function onMouseUp() {
-  commitDrag()
-}
+function onMouseLeave() { tooltip.visible = false }
+function onMouseUp()    { commitDrag() }
 
 function commitDrag() {
   if (drag.active && drag.targetFieldId && drag.targetTime) {
@@ -462,142 +424,77 @@ function commitDrag() {
         ?? props.allFields.find(f => f.id === drag.targetFieldId)
       localSchedule.value[idx] = {
         ...localSchedule.value[idx],
-        field_id:   drag.targetFieldId,
+        field_id: drag.targetFieldId,
         field_name: field?.name ?? drag.targetFieldId,
-        time:       drag.targetTime,
+        time: drag.targetTime,
       }
     }
   }
-  drag.active  = false
-  drag.matchId = null
+  drag.active = false; drag.matchId = null
   window.removeEventListener('mouseup', commitDrag)
 }
 
 const ghostStyle = computed(() => {
   if (!drag.active || !dragMatch.value) return { display: 'none' }
-  const colors = colorMap.value[drag.matchId]
   return {
-    position:         'fixed',
-    left:             drag.mouseX + 'px',
-    top:              drag.mouseY + 'px',
-    width:            '180px',
-    height:           '52px',
-    zIndex:           9999,
-    pointerEvents:    'none',
-    transform:        'translate(-8px, -12px)',
-    borderRadius:     '6px',
-    border:           '1px solid',
-    overflow:         'hidden',
-    display:          'flex',
-    backgroundColor:  colors?.bg  ?? '#F3F4F6',
-    borderColor:      colors?.border ?? '#D1D5DB',
-    boxShadow:        '0 4px 20px rgba(0,0,0,0.20)',
-    opacity:          '0.92',
+    position: 'fixed',
+    left: drag.mouseX + 'px', top: drag.mouseY + 'px',
+    transform: 'translate(-6px, -10px)',
+    width: '200px', height: `${LANE_H - 2}px`,
+    zIndex: 9999, pointerEvents: 'none',
   }
 })
 
 const dropTargetStyle = computed(() => {
   if (!drag.active || !drag.targetTime || !dragMatch.value) return {}
   const m = dragMatch.value
-  const startMin = toMin(drag.targetTime)
-  const left  = ((startMin - DAY_START) / DAY_DURATION) * 100
+  const left  = ((toMin(drag.targetTime) - DAY_START) / DAY_DURATION) * 100
   const width = (m.duration / DAY_DURATION) * 100
   return {
-    position:     'absolute',
-    left:         `${left}%`,
-    width:        `calc(${width}% - 3px)`,
-    top:          '2px',
-    height:       `${LANES.length * LANE_H - 4}px`,
-    background:   'rgba(59, 130, 246, 0.08)',
-    border:       '2px dashed #3B82F6',
-    borderRadius: '6px',
-    zIndex:       1,
-    pointerEvents:'none',
+    position: 'absolute',
+    left: `${left}%`, width: `calc(${width}% - 2px)`,
+    top: '1px', height: `${LANES.length * LANE_H - 2}px`,
+    background: 'rgba(0,0,0,0.04)',
+    border: '1px dashed #9CA3AF',
+    borderRadius: '2px',
+    zIndex: 1, pointerEvents: 'none',
   }
 })
-
-// ─── COLORS ──────────────────────────────────────────────────
-const PALETTE = [
-  { bg: '#EFF6FF', border: '#3B82F6' },
-  { bg: '#F5F3FF', border: '#8B5CF6' },
-  { bg: '#ECFDF5', border: '#10B981' },
-  { bg: '#FFFBEB', border: '#F59E0B' },
-  { bg: '#FFF1F2', border: '#F43F5E' },
-  { bg: '#ECFEFF', border: '#06B6D4' },
-  { bg: '#FDF4FF', border: '#D946EF' },
-  { bg: '#F7FEE7', border: '#84CC16' },
-]
-
-const colorMap = computed(() => {
-  const map = {}
-  props.scheduled.forEach((m, i) => {
-    map[m.match_id] = PALETTE[i % PALETTE.length]
-  })
-  return map
-})
-
-function accentColor(matchId) {
-  return colorMap.value[matchId]?.border ?? '#6B7280'
-}
-
-// ─── BLOCK STYLE ─────────────────────────────────────────────
-function blockStyle(m) {
-  const startMin = toMin(m.time)
-  const left   = ((startMin - DAY_START) / DAY_DURATION) * 100
-  const width  = (m.duration / DAY_DURATION) * 100
-  const top    = m.laneStart * LANE_H
-  const height = m.laneCount * LANE_H
-  const colors = colorMap.value[m.match_id]
-
-  return {
-    left:            `${left}%`,
-    width:           `calc(${width}% - 3px)`,
-    top:             `${top + 2}px`,
-    height:          `${height - 4}px`,
-    backgroundColor: colors?.bg  ?? '#F3F4F6',
-    borderColor:     colors?.border ?? '#D1D5DB',
-    cursor:          'grab',
-  }
-}
 
 // ─── TOOLTIP ─────────────────────────────────────────────────
 const tooltip = reactive({ visible: false, x: 0, y: 0, match: null })
 
 function showTooltip(m, event) {
-  tooltip.match   = m
-  tooltip.visible = true
-  positionTooltip(event)
+  tooltip.match = m; tooltip.visible = true; positionTooltip(event)
 }
 
 function positionTooltip(event) {
-  tooltip.x = event.clientX + 16
-  tooltip.y = event.clientY + 16
+  tooltip.x = event.clientX + 14; tooltip.y = event.clientY + 14
 }
 </script>
 
 
 <style scoped>
+/* ─── BASE ──────────────────────────────────────────────── */
 .gantt-wrapper {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
+  font-size: 11px;
   user-select: none;
-  overflow-x: auto;
+  color: #111827;
 }
 
-.is-dragging-active {
-  cursor: grabbing;
-}
+.is-dragging-active { cursor: grabbing; }
 
-/* HEADER */
+/* ─── HEADER ────────────────────────────────────────────── */
 .gantt-header-row {
   display: flex;
-  height: 28px;
-  margin-bottom: 6px;
+  height: 24px;
+  margin-bottom: 4px;
 }
 
 .gantt-sublane-placeholder {
-  width: 28px;
-  min-width: 28px;
+  width: 24px;
+  min-width: 24px;
 }
 
 .gantt-timeline-header {
@@ -609,151 +506,119 @@ function positionTooltip(event) {
   position: absolute;
   transform: translateX(-50%);
   color: #9CA3AF;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 10px;
   white-space: nowrap;
 }
 
-/* FIELD SECTION */
-.gantt-field-section {
+/* ─── FIELD ROWS ────────────────────────────────────────── */
+.gantt-field-row {
   display: flex;
-  margin-bottom: 8px;
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  overflow: hidden;
-  background: white;
+  margin-bottom: 2px;
+  border-top: 1px solid #F3F4F6;
 }
 
-/* FIELD LABEL COLUMN */
-.gantt-field-label-col {
-  width: 88px;
-  min-width: 88px;
-  background: #F9FAFB;
-  border-right: 1px solid #E5E7EB;
+.gantt-field-row:first-of-type {
+  border-top: none;
+}
+
+.gantt-label-col {
+  width: 80px;
+  min-width: 80px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 8px 6px;
-  gap: 3px;
+  padding: 0 8px 0 0;
 }
 
 .gantt-field-name {
+  font-size: 11px;
   font-weight: 700;
-  font-size: 13px;
-  color: #111827;
-  text-align: center;
+  color: #374151;
+  white-space: nowrap;
 }
 
-.gantt-field-surface {
-  font-size: 10px;
-  color: #9CA3AF;
-  text-transform: capitalize;
-  text-align: center;
-}
-
-/* SUB-FIELD LABEL COLUMN */
+/* ─── SUB-LANE LABELS ───────────────────────────────────── */
 .gantt-sublane-col {
-  width: 28px;
-  min-width: 28px;
+  width: 24px;
+  min-width: 24px;
   position: relative;
-  border-right: 1px solid #E5E7EB;
-  background: #F9FAFB;
+  border-right: 1px solid #F3F4F6;
 }
 
 .gantt-sublane-label {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 0; right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
-  font-weight: 600;
-  color: #9CA3AF;
-  border-bottom: 1px solid #F3F4F6;
+  font-size: 8px;
+  color: #D1D5DB;
+  border-bottom: 1px solid #F9FAFB;
 }
 
-/* LANES AREA */
+/* ─── LANES AREA ────────────────────────────────────────── */
 .gantt-lanes-area {
   flex: 1;
   position: relative;
 }
 
-/* LANE ROW */
-.gantt-lane-row {
+.gantt-lane-stripe {
   position: absolute;
-  left: 0;
-  right: 0;
-  border-bottom: 1px solid #F3F4F6;
+  left: 0; right: 0;
+  border-bottom: 1px solid #F9FAFB;
 }
 
-.gantt-lane-row:nth-child(even) {
-  background: #FAFAFA;
+.gantt-lane-stripe:nth-child(even) {
+  background: rgba(0,0,0,0.01);
 }
 
-/* GRID LINES */
-.gantt-grid-line {
+.gantt-tick {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 0; bottom: 0;
   width: 1px;
-  background: #E5E7EB;
+  background: #F3F4F6;
   z-index: 0;
 }
 
-/* MATCH BLOCK */
-.gantt-match-block {
+/* ─── MATCH BLOCK ───────────────────────────────────────── */
+.gantt-block {
   position: absolute;
-  border-radius: 6px;
-  border: 1px solid;
+  display: flex;
+  align-items: stretch;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-left: none;
+  border-radius: 2px;
   z-index: 2;
   overflow: hidden;
-  display: flex;
-  transition: filter 0.1s, box-shadow 0.1s, opacity 0.1s;
+  transition: background 0.1s, opacity 0.1s;
 }
 
-.gantt-match-block:hover {
-  filter: brightness(0.97);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+.gantt-block:hover {
+  background: #F9FAFB;
   z-index: 10;
 }
 
-.gantt-match-block.is-source {
-  opacity: 0.25;
+.gantt-block.is-source {
+  opacity: 0.2;
 }
 
-/* LEFT ACCENT */
-.gantt-match-accent {
+.gantt-block-bar {
   width: 3px;
   flex-shrink: 0;
 }
 
-/* MATCH CONTENT */
-.gantt-match-inner {
+.gantt-block-text {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 3px 6px;
+  padding: 2px 5px;
   overflow: hidden;
   flex: 1;
   gap: 1px;
 }
 
-.gantt-match-time {
-  font-size: 9px;
-  font-weight: 600;
-  color: #6B7280;
-  white-space: nowrap;
-}
-
-.gantt-match-sublabel {
-  font-weight: 400;
-  color: #9CA3AF;
-}
-
-.gantt-match-home {
-  font-size: 11px;
+.gantt-block-home {
+  font-size: 10px;
   font-weight: 700;
   color: #111827;
   white-space: nowrap;
@@ -761,174 +626,147 @@ function positionTooltip(event) {
   text-overflow: ellipsis;
 }
 
-.gantt-match-away {
-  font-size: 10px;
-  color: #6B7280;
+.gantt-block-meta {
+  font-size: 9px;
+  color: #9CA3AF;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* PENALTY BADGE */
-.gantt-penalty-badge {
+.gantt-block-warn {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 14px;
-  height: 14px;
+  top: 3px; right: 3px;
+  width: 12px; height: 12px;
   background: #F97316;
   color: white;
   border-radius: 50%;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* GHOST BLOCK */
+/* ─── GHOST ─────────────────────────────────────────────── */
 .gantt-ghost {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 12px;
-  user-select: none;
+  font-family: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+  font-size: 11px;
+  display: flex;
+  align-items: stretch;
+  background: white;
+  border: 1px solid #D1D5DB;
+  border-left: none;
+  border-radius: 2px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  opacity: 0.95;
 }
 
 /* ─── PENALTY PANEL ─────────────────────────────────────── */
 .penalty-panel {
-  margin-top: 16px;
-  border-radius: 12px;
-  border: 1px solid #FED7AA;
-  background: #FFF7ED;
-  overflow: hidden;
+  margin-top: 20px;
+  border-top: 1px solid #E5E7EB;
+  padding-top: 12px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
 }
 
-.penalty-panel--ok {
-  border-color: #A7F3D0;
-  background: #F0FDF4;
-}
-
-.penalty-panel-header {
+.penalty-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.penalty-score {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.score--warn { color: #C2410C; }
-.score--ok   { color: #065F46; }
-
-.penalty-hint {
-  font-size: 11px;
+.penalty-title {
+  font-size: 10px;
+  font-weight: 700;
   color: #9CA3AF;
-  font-style: italic;
+  letter-spacing: 0.08em;
+}
+
+.penalty-total {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.total--ok   { color: #059669; }
+.total--warn { color: #111827; }
+
+.penalty-empty {
+  font-size: 11px;
+  color: #059669;
 }
 
 .penalty-list {
-  border-top: 1px solid #FED7AA;
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
-.penalty-panel--ok .penalty-list {
-  border-top-color: #A7F3D0;
-}
-
-.penalty-item {
+.penalty-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
-  font-size: 12px;
+  font-size: 11px;
   color: #374151;
 }
 
-.penalty-item-dot {
-  width: 6px;
-  height: 6px;
+.penalty-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: #F97316;
 }
 
-.penalty-item--overlap .penalty-item-dot  { background: #EF4444; }
-.penalty-item--window  .penalty-item-dot  { background: #F59E0B; }
-.penalty-item--locker  .penalty-item-dot  { background: #F97316; }
-.penalty-item--field   .penalty-item-dot  { background: #8B5CF6; }
-.penalty-item--surface .penalty-item-dot  { background: #06B6D4; }
+.penalty-type {
+  width: 52px;
+  flex-shrink: 0;
+  color: #9CA3AF;
+  font-size: 10px;
+}
 
-.penalty-item-label {
+.penalty-label {
   flex: 1;
+  color: #374151;
 }
 
-.penalty-item-points {
-  font-size: 11px;
+.penalty-pts {
   font-weight: 700;
-  color: #9A3412;
+  color: #111827;
   white-space: nowrap;
 }
 
-/* TOOLTIP */
+/* ─── TOOLTIP ───────────────────────────────────────────── */
 .gantt-tooltip {
   position: fixed;
   z-index: 9999;
-  background: white;
-  border: 1px solid #E5E7EB;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  padding: 12px 14px;
-  min-width: 220px;
+  background: #111827;
+  color: #F9FAFB;
+  border-radius: 6px;
+  padding: 10px 14px;
   pointer-events: none;
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-.gantt-tooltip-header {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #F3F4F6;
-}
-
-.gantt-tooltip-home {
-  font-weight: 700;
-  font-size: 13px;
-  color: #111827;
-}
-
-.gantt-tooltip-sep {
+  font-family: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
   font-size: 11px;
-  color: #9CA3AF;
-}
-
-.gantt-tooltip-away {
-  font-size: 12px;
-  color: #4B5563;
-}
-
-.gantt-tooltip-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.gantt-tooltip-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #374151;
-  gap: 12px;
-}
-
-.gantt-tooltip-label {
-  color: #9CA3AF;
-  font-weight: 500;
+  line-height: 1.6;
   white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+
+.tt-home {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.tt-vs {
+  font-weight: 400;
+  color: #6B7280;
+  margin: 0 4px;
+}
+
+.tt-meta, .tt-lockers {
+  color: #9CA3AF;
+  font-size: 10px;
 }
 </style>
