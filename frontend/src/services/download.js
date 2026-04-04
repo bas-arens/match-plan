@@ -9,7 +9,6 @@ function buildRows(scheduled) {
     'Veld':          m.field_name,
     'Thuisteam':     m.home,
     'Uitteam':       m.away,
-    'Duur (min)':    m.duration,
     'Kleedkamer thuis': m.home_locker,
     'Kleedkamer uit':   m.away_locker,
   }))

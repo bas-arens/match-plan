@@ -27,7 +27,6 @@
           <th>Veld</th>
           <th>Thuisteam</th>
           <th>Uitteam</th>
-          <th>Duur</th>
           <th>Kleedkamer thuis</th>
           <th>Kleedkamer uit</th>
         </tr>
@@ -42,7 +41,6 @@
           <td>{{ m.field_name }}</td>
           <td class="col-team">{{ m.home }}</td>
           <td class="col-team">{{ m.away }}</td>
-          <td class="col-dur">{{ m.duration }} min</td>
           <td>{{ m.home_locker }}</td>
           <td>
             {{ m.away_locker }}
