@@ -1,10 +1,7 @@
-import { API_BASE } from './config.js'
+import { API_BASE, apiFetch } from './config.js'
 
-export async function runOptimizer(date) {
-  const res = await fetch(`${API_BASE}/optimize/run`, {
+export const runOptimizer = date =>
+  apiFetch(`${API_BASE}/optimize/run`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ date }),
   })
-  return res.json()
-}

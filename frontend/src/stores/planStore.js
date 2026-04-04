@@ -1,6 +1,18 @@
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 
-export const planStore = reactive({
-  result: null,   // full API response: { status, algorithm, date, scheduled }
-  date: null,     // ISO string e.g. "2026-04-05"
-})
+const STORAGE_KEY = 'matchplan_plan'
+
+function load() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : { result: null, date: null }
+  } catch {
+    return { result: null, date: null }
+  }
+}
+
+export const planStore = reactive(load())
+
+watch(planStore, val => {
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(val))
+}, { deep: true })
