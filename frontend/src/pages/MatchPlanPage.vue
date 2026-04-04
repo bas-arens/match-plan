@@ -42,13 +42,6 @@
           </div>
         </div>
 
-        <router-link
-          to="/calendar"
-          class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-dark transition-colors"
-        >
-          <ArrowLeft :size="16" />
-          Terug naar kalender
-        </router-link>
       </div>
     </div>
 
@@ -135,7 +128,7 @@ import { planStore } from '@/stores/planStore'
 import GanttChart from '@/components/schedule/GanttChart.vue'
 import { getPreferences, getFields, getLockers } from '@/services/settings.js'
 import { downloadCSV, downloadExcel, downloadPNG, downloadPDF } from '@/services/download.js'
-import { ArrowLeft, CalendarX, DoorOpen, TriangleAlert, Download } from 'lucide-vue-next'
+import { CalendarX, DoorOpen, TriangleAlert, Download } from 'lucide-vue-next'
 
 const scheduled    = computed(() => planStore.result?.scheduled ?? [])
 const preferences  = ref([])
