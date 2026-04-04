@@ -49,10 +49,16 @@
         <table class="w-full text-sm">
           <thead>
             <!-- SECTION HEADERS -->
-            <tr class="text-left text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
-              <th colspan="2" class="px-6 pt-4 pb-1">Thuis</th>
-              <th colspan="2" class="px-6 pt-4 pb-1 border-l border-gray-100">Match</th>
-              <th colspan="2" class="px-6 pt-4 pb-1 border-l border-gray-100">Uit</th>
+            <tr class="text-center text-xs font-bold text-gray-500 uppercase tracking-widest">
+              <th colspan="2" class="px-6 pt-4 pb-0">
+                <div class="pb-1 border-b-2 border-gray-300">Thuis</div>
+              </th>
+              <th colspan="2" class="px-6 pt-4 pb-0">
+                <div class="pb-1 border-b-2 border-gray-300">Match</div>
+              </th>
+              <th colspan="2" class="px-6 pt-4 pb-0">
+                <div class="pb-1 border-b-2 border-gray-300">Uit</div>
+              </th>
             </tr>
             <!-- COLUMN HEADERS -->
             <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">
