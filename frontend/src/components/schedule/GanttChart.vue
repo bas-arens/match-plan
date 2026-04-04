@@ -288,8 +288,8 @@ function blockStyle(m) {
     top:             `${top + 1}px`,
     height:          `${height - 2}px`,
     cursor:          'grab',
-    backgroundColor: color + '18',
-    borderColor:     color + '55',
+    backgroundColor: '#F3F4F6',
+    borderColor:     '#D1D5DB',
   }
 }
 
