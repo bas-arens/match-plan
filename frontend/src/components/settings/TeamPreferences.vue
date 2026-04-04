@@ -142,6 +142,7 @@ import TimeRangeSlider from '@/components/common/TimeRangeSlider.vue'
 import { getTeams } from '@/services/sportlink.js'
 import { getPreferences, savePreferences, getFields, getLockers } from '@/services/settings.js'
 import { autosave } from '@/utils/autosave.js'
+import { timeToMin, minToTime } from '@/utils/time.js'
 
 const DAY_START_MIN = 7 * 60
 const DAY_END_MIN   = 21 * 60
@@ -150,15 +151,6 @@ const teamPreferences = ref({})
 const fields          = ref([])
 const lockers         = ref([])
 const loading         = ref(true)
-
-function timeToMin(t) {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-function minToTime(min) {
-  return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
-}
 
 onMounted(async () => {
   const [categories, saved, loadedFields, loadedLockers] = await Promise.all([

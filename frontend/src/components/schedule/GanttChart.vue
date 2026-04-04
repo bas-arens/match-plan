@@ -152,6 +152,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { timeToMin } from '@/utils/time.js'
 
 const props = defineProps({
   scheduled:   { type: Array, required: true },
@@ -198,10 +199,6 @@ watch(() => props.scheduled, val => {
 }, { deep: true })
 
 // ─── HELPERS ─────────────────────────────────────────────────
-function toMin(t) {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
 
 function minToTime(min) {
   const clamped = Math.max(DAY_START, Math.min(DAY_END - SLOT_SIZE, min))
@@ -241,11 +238,11 @@ const laned = computed(() => {
   for (const field of fields.value) {
     const fieldMatches = localSchedule.value
       .filter(m => m.field_id === field.id)
-      .sort((a, b) => toMin(a.time) - toMin(b.time))
+      .sort((a, b) => timeToMin(a.time) - timeToMin(b.time))
 
     const laneEnd = [0, 0, 0, 0]
     for (const m of fieldMatches) {
-      const start = toMin(m.time)
+      const start = timeToMin(m.time)
       const end   = start + m.duration
       const count = laneCount(m.field_size)
       let laneStart = 0
@@ -276,7 +273,7 @@ function dotColor(matchId) {
 
 // ─── BLOCK STYLE ─────────────────────────────────────────────
 function blockStyle(m) {
-  const startMin = toMin(m.time)
+  const startMin = timeToMin(m.time)
   const left   = ((startMin - DAY_START) / DAY_DURATION) * 100
   const width  = (m.duration / DAY_DURATION) * 100
   const top    = m.laneStart * LANE_H
@@ -299,14 +296,14 @@ const penalties = computed(() => {
   let total = 0
 
   const sched = localSchedule.value.map(m => ({
-    ...m, startMin: toMin(m.time), endMin: toMin(m.time) + m.duration,
+    ...m, startMin: timeToMin(m.time), endMin: timeToMin(m.time) + m.duration,
   }))
 
   for (const m of sched) {
     const pref = props.preferences.find(p => p.team === m.home)
     if (!pref) continue
 
-    const ws = toMin(pref.start), we = toMin(pref.end)
+    const ws = timeToMin(pref.start), we = timeToMin(pref.end)
     let win = 0
     if (m.startMin < ws)      win = ws - m.startMin
     else if (m.startMin > we) win = m.startMin - we
@@ -451,7 +448,7 @@ const ghostStyle = computed(() => {
 const dropTargetStyle = computed(() => {
   if (!drag.active || !drag.targetTime || !dragMatch.value) return {}
   const m = dragMatch.value
-  const left  = ((toMin(drag.targetTime) - DAY_START) / DAY_DURATION) * 100
+  const left  = ((timeToMin(drag.targetTime) - DAY_START) / DAY_DURATION) * 100
   const width = (m.duration / DAY_DURATION) * 100
   return {
     position: 'absolute',

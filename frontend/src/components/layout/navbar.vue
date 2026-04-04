@@ -2,8 +2,8 @@
 import { RouterLink, useRoute } from 'vue-router'
 import { ref, onMounted } from 'vue'
 import { Sun, Moon } from 'lucide-vue-next'
-import FieldIcon from '@/assets/field.svg'
 import { useTheme } from '@/composables/useTheme.js'
+import { getLogo } from '@/services/sportlink.js'
 
 const route = useRoute()
 const isActive = (path) => route.path === path
@@ -18,11 +18,10 @@ const logoUrl = ref(null)
 
 onMounted(async () => {
   try {
-    const res = await fetch("http://localhost:8000/sportlink/logo")
-    const data = await res.json()
+    const data = await getLogo()
     logoUrl.value = data.logo
-  } catch (err) {
-    console.error("Failed to load club logo:", err)
+  } catch {
+    // no logo available — fallback shown in template
   }
 })
 </script>
