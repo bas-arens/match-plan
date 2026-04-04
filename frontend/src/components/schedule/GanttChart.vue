@@ -25,6 +25,18 @@
         <span class="gantt-field-surface">{{ field.surface || '' }}</span>
       </div>
 
+      <!-- SUB-FIELD LABEL COLUMN -->
+      <div class="gantt-sublane-col" :style="{ height: LANES.length * LANE_H + 'px' }">
+        <div
+          v-for="(label, i) in LANE_LABELS"
+          :key="label"
+          class="gantt-sublane-label"
+          :style="{ top: i * LANE_H + 'px', height: LANE_H + 'px' }"
+        >
+          {{ label }}
+        </div>
+      </div>
+
       <!-- LANES AREA -->
       <div class="gantt-lanes-area" :style="{ height: LANES.length * LANE_H + 'px' }">
 
@@ -57,7 +69,7 @@
           <div class="gantt-match-accent" :style="{ backgroundColor: accentColor(m.match_id) }" />
 
           <div class="gantt-match-inner">
-            <span class="gantt-match-time">{{ m.time }}</span>
+            <span class="gantt-match-time">{{ m.time }}<span v-if="subFieldLabel(m)" class="gantt-match-sublabel"> · {{ m.field_name }} {{ subFieldLabel(m) }}</span></span>
             <span class="gantt-match-home">{{ m.home }}</span>
             <span class="gantt-match-away">{{ m.away }}</span>
           </div>
@@ -88,7 +100,7 @@
           </div>
           <div class="gantt-tooltip-row">
             <span class="gantt-tooltip-label">Veld</span>
-            <span>{{ tooltip.match?.field_name }}</span>
+            <span>{{ tooltip.match?.field_name }}{{ tooltip.match && subFieldLabel(tooltip.match) ? ' ' + subFieldLabel(tooltip.match) : '' }}</span>
           </div>
           <div class="gantt-tooltip-row">
             <span class="gantt-tooltip-label">Kleedkamers</span>
@@ -116,9 +128,10 @@ const DAY_START    = 8 * 60
 const DAY_END      = 20 * 60
 const DAY_DURATION = DAY_END - DAY_START
 
-const LANE_H = 52
-const LANES  = ['A', 'B', 'C', 'D']
-const hours  = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+const LANE_H      = 52
+const LANES       = ['A', 'B', 'C', 'D']
+const LANE_LABELS = ['A1', 'A2', 'B1', 'B2']
+const hours       = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
 // ─── HELPERS ─────────────────────────────────────────────────
 function toMin(t) {
@@ -132,6 +145,12 @@ function laneCount(fieldSize) {
 
 function hourPercent(hour) {
   return ((hour * 60 - DAY_START) / DAY_DURATION) * 100
+}
+
+function subFieldLabel(m) {
+  if (m.field_size >= 1.0) return ''
+  if (m.field_size >= 0.5) return m.laneStart === 0 ? 'A' : 'B'
+  return LANE_LABELS[m.laneStart] ?? ''
 }
 
 // ─── FIELDS ──────────────────────────────────────────────────
@@ -314,6 +333,28 @@ function positionTooltip(event) {
   text-align: center;
 }
 
+/* SUB-FIELD LABEL COLUMN */
+.gantt-sublane-col {
+  width: 28px;
+  min-width: 28px;
+  position: relative;
+  border-right: 1px solid #E5E7EB;
+  background: #F9FAFB;
+}
+
+.gantt-sublane-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: #9CA3AF;
+  border-bottom: 1px solid #F3F4F6;
+}
+
 /* LANES AREA */
 .gantt-lanes-area {
   flex: 1;
@@ -382,6 +423,11 @@ function positionTooltip(event) {
   font-weight: 600;
   color: #6B7280;
   white-space: nowrap;
+}
+
+.gantt-match-sublabel {
+  font-weight: 400;
+  color: #9CA3AF;
 }
 
 .gantt-match-home {

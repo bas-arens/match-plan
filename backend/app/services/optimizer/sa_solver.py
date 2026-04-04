@@ -356,16 +356,18 @@ class SAScheduler:
     def solve(self):
         n_steps = int(math.log(self.T_MIN / self.T_INIT) / math.log(self.COOLING))
 
-        print(f"\n{'='*55}")
-        print(f"  SIMULATED ANNEALING — {len(self.matches)} matches")
-        print(f"  T: {self.T_INIT} → {self.T_MIN}  |  "
-              f"steps: {n_steps}  |  evals: {n_steps * self.ITER_PER_T:,}")
-        print(f"{'='*55}")
-
         current      = self._initial_assignment()
         current_cost = self._cost(current)
         best         = dict(current)
         best_cost    = current_cost
+        initial_cost = current_cost
+
+        print(f"\n{'='*55}")
+        print(f"  SIMULATED ANNEALING — {len(self.matches)} matches")
+        print(f"  T: {self.T_INIT} → {self.T_MIN}  |  "
+              f"steps: {n_steps}  |  evals: {n_steps * self.ITER_PER_T:,}")
+        print(f"  Starting cost (greedy): {initial_cost:.1f}")
+        print(f"{'='*55}")
 
         T = self.T_INIT
 
@@ -385,7 +387,9 @@ class SAScheduler:
 
             T *= self.COOLING
 
-        print(f"  Best cost: {best_cost:.1f}")
+        improvement = initial_cost - best_cost
+        print(f"  Cost: {initial_cost:.1f} → {best_cost:.1f}  "
+              f"(improved by {improvement:.1f})")
         print(f"{'='*55}\n")
 
         return self._build_schedule(best)

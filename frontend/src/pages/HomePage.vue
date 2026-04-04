@@ -88,7 +88,7 @@ async function planMatchday() {
   error.value = null
   result.value = null
 
-  const dateISO = selectedDate.value.toISOString().split("T")[0]
+  const dateISO = selectedDate.value.toLocaleDateString("sv-SE")
 
   try {
     const res = await runOptimizer(dateISO)

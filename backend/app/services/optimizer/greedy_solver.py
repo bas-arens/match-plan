@@ -321,7 +321,7 @@ class GreedyScheduler:
             })
 
         placed = len(self.schedule)
-        print(f"\n  {placed}/{len(sorted_matches)} placed  |  total penalty: {total_penalty}")
+        print(f"\n  {placed}/{len(sorted_matches)} placed  |  ★ GREEDY TOTAL PENALTY: {total_penalty}")
         print(f"{'='*55}\n")
 
         return self.schedule
