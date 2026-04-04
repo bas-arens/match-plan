@@ -6,23 +6,42 @@
     <div v-else class="overflow-x-auto">
       <table class="text-sm border-collapse">
         <thead>
-          <tr class="text-left text-xs text-gray-400 border-b border-gray-200">
-            <th class="pb-2 pr-6 font-medium" style="min-width:180px">Team</th>
-            <th class="pb-2 pr-8 font-medium" style="min-width:220px">Tijdvenster</th>
+          <!-- SECTION HEADERS -->
+          <tr class="text-center text-xs font-bold text-gray-500 uppercase tracking-widest">
+            <th class="pt-4 pb-0 pr-6 text-left" style="min-width:180px">
+              <div class="pb-1 border-b-2 border-gray-300 text-left">Team</div>
+            </th>
+            <th class="pt-4 pb-0 pr-8" style="min-width:220px">
+              <div class="pb-1 border-b-2 border-gray-300">Tijdvenster</div>
+            </th>
+            <th :colspan="fields.length" class="pt-4 pb-0 pr-4">
+              <div class="pb-1 border-b-2 border-gray-300">Voorkeursvelden</div>
+            </th>
+            <th :colspan="lockers.length" class="pt-4 pb-0 pr-4">
+              <div class="pb-1 border-b-2 border-gray-300">Kleedkamers</div>
+            </th>
+            <th colspan="2" class="pt-4 pb-0">
+              <div class="pb-1 border-b-2 border-gray-300">Vermijd ondergrond</div>
+            </th>
+          </tr>
+          <!-- COLUMN HEADERS -->
+          <tr class="text-xs text-gray-400 border-b border-gray-200">
+            <th class="py-2 pr-6 font-medium text-left"></th>
+            <th class="py-2 pr-8 font-medium"></th>
             <th
               v-for="field in fields"
               :key="'fh-' + field.id"
-              class="pb-2 pr-4 font-medium text-center"
+              class="py-2 pr-4 font-medium text-center"
               style="min-width:56px"
             >{{ field.name }}</th>
             <th
               v-for="locker in lockers"
               :key="'lh-' + locker.id"
-              class="pb-2 pr-4 font-medium text-center"
+              class="py-2 pr-4 font-medium text-center"
               style="min-width:56px"
             >{{ locker.name }}</th>
-            <th class="pb-2 pr-4 font-medium text-center text-xs" style="min-width:64px">Kunst-<br>gras ✗</th>
-            <th class="pb-2 font-medium text-center text-xs" style="min-width:64px">Natuur-<br>gras ✗</th>
+            <th class="py-2 pr-4 font-medium text-center" style="min-width:64px">Kunstgras</th>
+            <th class="py-2 font-medium text-center" style="min-width:64px">Natuurgras</th>
           </tr>
         </thead>
 
