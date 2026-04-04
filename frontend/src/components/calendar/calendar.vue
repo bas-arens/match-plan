@@ -189,7 +189,7 @@ onMounted(async () => {
 
 .cal-header-cell {
   text-align: center;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   color: #D1D5DB;
   padding-bottom: 6px;
@@ -217,7 +217,7 @@ onMounted(async () => {
 }
 
 .cal-day-num {
-  font-size: 11px;
+  font-size: 13px;
   color: #374151;
   line-height: 1;
 }

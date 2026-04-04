@@ -9,8 +9,8 @@ const route = useRoute()
 const isActive = (path) => route.path === path
 
 // New centralized Tailwind brand colors
-const activeClass = 'bg-brand-primaryDark text-white'
-const defaultClass = 'text-brand-primaryLight hover:bg-brand-primaryDark hover:text-white'
+const activeClass = 'bg-gray-700 text-white'
+const defaultClass = 'text-gray-400 hover:bg-gray-800 hover:text-white'
 
 // --- Dynamic logo from backend ---
 const logoUrl = ref(null)
@@ -27,7 +27,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <nav class="bg-brand-primary border-b border-brand-border">
+  <nav class="bg-gray-900 border-b border-gray-800">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-20 items-center justify-between">
 
@@ -45,13 +45,13 @@ onMounted(async () => {
           <!-- Fallback if no logo loaded -->
           <div
             v-else
-            class="h-10 w-10 bg-white rounded flex items-center justify-center text-brand-primary font-bold"
+            class="h-10 w-10 bg-gray-900 rounded flex items-center justify-center text-white font-bold"
           >
             MP
           </div>
 
           <!-- App name -->
-          <span class="text-brand-dark text-2xl font-bold ml-2">
+          <span class="text-white text-2xl font-bold ml-2">
             MatchPlan
           </span>
         </RouterLink>
