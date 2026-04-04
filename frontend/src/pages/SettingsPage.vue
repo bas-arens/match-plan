@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8 max-w-6xl mx-auto space-y-6 overflow-hidden">
+  <div class="p-8 max-w-full mx-auto space-y-6">
 
     <!-- TABS -->
     <div class="flex gap-8 border-b border-gray-200">
@@ -23,7 +23,7 @@
     </div>
 
     <!-- TAB: TIJDVENSTERS -->
-    <div v-if="activeTab === 'windows'" class="overflow-x-auto">
+    <div v-if="activeTab === 'windows'">
       <TeamPreferences />
     </div>
 

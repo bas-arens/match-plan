@@ -3,21 +3,21 @@
 
     <div v-if="loading" class="text-xs text-gray-400">Laden...</div>
 
-    <div v-else class="overflow-x-auto">
-      <table class="text-sm border-collapse">
+    <div v-else>
+      <table class="w-full text-sm border-collapse">
         <thead>
           <!-- SECTION HEADERS -->
           <tr class="text-center text-xs font-bold text-gray-500 uppercase tracking-widest">
-            <th class="pt-4 pb-0 pr-6 text-left" style="min-width:180px">
+            <th class="pt-4 pb-0 pr-4 text-left" style="width:160px">
               <div class="pb-1 border-b-2 border-gray-300 text-left">Team</div>
             </th>
-            <th class="pt-4 pb-0 pr-8" style="min-width:220px">
+            <th class="pt-4 pb-0 pr-6" style="width:170px">
               <div class="pb-1 border-b-2 border-gray-300">Tijdvenster</div>
             </th>
-            <th :colspan="fields.length" class="pt-4 pb-0 pr-4">
+            <th :colspan="fields.length" class="pt-4 pb-0 pr-2">
               <div class="pb-1 border-b-2 border-gray-300">Voorkeursvelden</div>
             </th>
-            <th :colspan="lockers.length" class="pt-4 pb-0 pr-4">
+            <th :colspan="lockers.length" class="pt-4 pb-0 pr-2">
               <div class="pb-1 border-b-2 border-gray-300">Kleedkamers</div>
             </th>
             <th colspan="2" class="pt-4 pb-0">
@@ -26,22 +26,22 @@
           </tr>
           <!-- COLUMN HEADERS -->
           <tr class="text-xs text-gray-400 border-b border-gray-200">
-            <th class="py-2 pr-6 font-medium text-left"></th>
-            <th class="py-2 pr-8 font-medium"></th>
+            <th class="py-2 pr-4 font-medium text-left"></th>
+            <th class="py-2 pr-6 font-medium"></th>
             <th
               v-for="field in fields"
               :key="'fh-' + field.id"
-              class="py-2 pr-4 font-medium text-center"
-              style="min-width:56px"
+              class="py-2 pr-2 font-medium text-center"
+              style="width:48px"
             >{{ field.name }}</th>
             <th
               v-for="locker in lockers"
               :key="'lh-' + locker.id"
-              class="py-2 pr-4 font-medium text-center"
-              style="min-width:56px"
+              class="py-2 pr-2 font-medium text-center"
+              style="width:48px"
             >{{ locker.name }}</th>
-            <th class="py-2 pr-4 font-medium text-center" style="min-width:64px">Kunstgras</th>
-            <th class="py-2 font-medium text-center" style="min-width:64px">Natuurgras</th>
+            <th class="py-2 pr-2 font-medium text-center" style="width:56px">Kunstgras</th>
+            <th class="py-2 font-medium text-center" style="width:56px">Natuurgras</th>
           </tr>
         </thead>
 
@@ -63,12 +63,12 @@
               class="border-b border-gray-50 hover:bg-gray-50 transition-colors"
             >
               <!-- Team name -->
-              <td class="py-3 pr-6 text-gray-700 truncate" style="max-width:180px">
+              <td class="py-3 pr-4 text-gray-700 truncate" style="max-width:160px">
                 {{ team.team }}
               </td>
 
               <!-- Time range slider -->
-              <td class="py-3 pr-8" style="min-width:220px">
+              <td class="py-3 pr-6" style="width:170px">
                 <TimeRangeSlider
                   :modelStart="team.rangeStart"
                   :modelEnd="team.rangeEnd"
@@ -83,7 +83,7 @@
               <td
                 v-for="field in fields"
                 :key="'f-' + field.id"
-                class="py-3 pr-4 text-center"
+                class="py-3 pr-2 text-center"
               >
                 <input
                   type="checkbox"
@@ -97,7 +97,7 @@
               <td
                 v-for="locker in lockers"
                 :key="'l-' + locker.id"
-                class="py-3 pr-4 text-center"
+                class="py-3 pr-2 text-center"
               >
                 <input
                   type="checkbox"
@@ -144,7 +144,7 @@ import { getPreferences, savePreferences, getFields, getLockers } from '@/servic
 import { autosave } from '@/utils/autosave.js'
 
 const DAY_START_MIN = 7 * 60
-const DAY_END_MIN   = 23 * 60
+const DAY_END_MIN   = 21 * 60
 
 const teamPreferences = ref({})
 const fields          = ref([])
