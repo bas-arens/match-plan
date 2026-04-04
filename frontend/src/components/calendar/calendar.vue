@@ -281,4 +281,20 @@ onMounted(async () => {
   font-size: 10px;
   color: #9CA3AF;
 }
+
+/* ── DARK MODE ───────────────────────────────────────────── */
+:global(.dark) .cal-nav-btn         { color: #6B7280; }
+:global(.dark) .cal-nav-btn:hover   { color: #F9FAFB; background: #1F2937; }
+:global(.dark) .cal-month-label     { color: #F9FAFB; }
+:global(.dark) .cal-header-cell     { color: #4B5563; }
+:global(.dark) .cal-day-num         { color: #9CA3AF; }
+:global(.dark) .cal-day:hover       { background: #1F2937; }
+:global(.dark) .cal-day.is-today .cal-day-num    { color: #F9FAFB; }
+:global(.dark) .cal-day.is-selected             { background: #F9FAFB; }
+:global(.dark) .cal-day.is-selected .cal-day-num { color: #111827; }
+:global(.dark) .cal-day.is-selected .cal-dot    { background: #6B7280; }
+:global(.dark) .cal-footer          { border-top-color: #1F2937; }
+:global(.dark) .cal-today-btn       { color: #6B7280; }
+:global(.dark) .cal-today-btn:hover { color: #F9FAFB; }
+:global(.dark) .cal-match-count     { color: #6B7280; }
 </style>

@@ -1,16 +1,16 @@
 <template>
-  <div class="p-8 max-w-full mx-auto space-y-6">
+  <div class="p-8 max-w-full mx-auto space-y-6 dark:bg-gray-950 min-h-screen">
 
     <!-- TABS -->
-    <div class="flex gap-8 border-b border-gray-200">
+    <div class="flex gap-8 border-b border-gray-200 dark:border-gray-800">
       <button
         v-for="tab in tabs"
         :key="tab.id"
         @click="activeTab = tab.id"
         class="pb-3 text-sm font-medium transition-colors"
         :class="activeTab === tab.id
-          ? 'border-b-2 border-gray-900 text-gray-900'
-          : 'text-gray-400 hover:text-gray-700'"
+          ? 'border-b-2 border-gray-900 dark:border-white text-gray-900 dark:text-white'
+          : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
       >
         {{ tab.label }}
       </button>

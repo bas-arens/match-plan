@@ -1,10 +1,10 @@
 <template>
-  <div class="p-8 space-y-6">
+  <div class="p-8 space-y-6 dark:bg-gray-950 min-h-screen">
 
     <!-- HEADER -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-brand-dark">Planning</h1>
+        <h1 class="text-2xl font-bold text-brand-dark dark:text-white">Planning</h1>
         <p class="text-sm text-gray-500 mt-0.5">
           {{ planStore.date }}
           <span v-if="planStore.result?.algorithm" class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-primaryLight text-brand-dark">
@@ -54,7 +54,7 @@
     <div v-else class="space-y-6" ref="planningRef">
 
       <!-- GANTT CHART -->
-      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
         <GanttChart
           :scheduled="scheduled"
           :preferences="preferences"
@@ -64,10 +64,10 @@
       </div>
 
       <!-- LOCKER TABLE -->
-      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
           <DoorOpen :size="18" class="text-gray-400" />
-          <h3 class="font-semibold text-brand-dark">Kleedkamers</h3>
+          <h3 class="font-semibold text-brand-dark dark:text-white">Kleedkamers</h3>
         </div>
 
         <table class="w-full text-sm">
@@ -85,7 +85,7 @@
               </th>
             </tr>
             <!-- COLUMN HEADERS -->
-            <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            <tr class="bg-gray-50 dark:bg-gray-800 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">
               <th class="px-6 py-2">Team</th>
               <th class="px-6 py-2">Kleedkamer</th>
               <th class="px-6 py-2 border-l border-gray-100">Tijd</th>
@@ -98,14 +98,14 @@
             <tr
               v-for="m in scheduled"
               :key="m.match_id"
-              class="hover:bg-gray-50 transition-colors"
+              class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <td class="px-6 py-3 font-medium text-gray-800">{{ m.home }}</td>
-              <td class="px-6 py-3 text-gray-500 tabular-nums">{{ m.home_locker }}</td>
+              <td class="px-6 py-3 font-medium text-gray-800 dark:text-gray-100">{{ m.home }}</td>
+              <td class="px-6 py-3 text-gray-500 dark:text-gray-400 tabular-nums">{{ m.home_locker }}</td>
               <td class="px-6 py-3 text-gray-800 tabular-nums border-l border-gray-100">{{ m.time }}</td>
               <td class="px-6 py-3 text-gray-500">{{ m.field_name }}</td>
               <td class="px-6 py-3 font-medium text-gray-800 border-l border-gray-100">{{ m.away }}</td>
-              <td class="px-6 py-3 text-gray-500 tabular-nums">
+              <td class="px-6 py-3 text-gray-500 dark:text-gray-400 tabular-nums">
                 {{ m.away_locker }}
                 <span v-if="m.penalty > 0" class="ml-2 inline-flex items-center gap-1 text-orange-500 text-xs font-medium">
                   <TriangleAlert :size="12" />
