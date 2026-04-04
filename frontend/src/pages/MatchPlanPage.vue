@@ -148,10 +148,11 @@ const formats = [
 async function handleDownload(fmt) {
   downloadOpen.value = false
   const date = planStore.date
+  const algo = planStore.result?.algorithm ?? ''
   if (fmt === 'csv')   downloadCSV(scheduled.value, date)
   if (fmt === 'excel') downloadExcel(scheduled.value, date)
-  if (fmt === 'png')   await downloadPNG(planningRef.value, date)
-  if (fmt === 'pdf')   await downloadPDF(planningRef.value, date)
+  if (fmt === 'png')   await downloadPNG(scheduled.value, date, algo)
+  if (fmt === 'pdf')   await downloadPDF(scheduled.value, date, algo)
 }
 
 function onClickOutside(e) {

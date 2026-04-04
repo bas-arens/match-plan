@@ -39,16 +39,49 @@ export function downloadExcel(scheduled, date) {
   XLSX.writeFile(wb, filename(date, 'xlsx'))
 }
 
+// ─── Render print template to canvas ─────────────────────────
+async function renderPrintTemplate(scheduled, date, algorithm) {
+  const { createApp, defineComponent, h } = await import('vue')
+  const { default: PrintTemplate } = await import('@/components/schedule/PrintTemplate.vue')
+
+  // Mount off-screen
+  const wrapper = document.createElement('div')
+  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;'
+  document.body.appendChild(wrapper)
+
+  const app = createApp({
+    render() {
+      return h(PrintTemplate, { scheduled, date, algorithm })
+    }
+  })
+  const instance = app.mount(wrapper)
+
+  // Wait for next tick so styles apply
+  await new Promise(r => setTimeout(r, 100))
+
+  const canvas = await html2canvas(wrapper.firstElementChild, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+  })
+
+  app.unmount()
+  document.body.removeChild(wrapper)
+
+  return canvas
+}
+
 // ─── PNG ─────────────────────────────────────────────────────
-export async function downloadPNG(element, date) {
-  const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+export async function downloadPNG(scheduled, date, algorithm) {
+  const canvas = await renderPrintTemplate(scheduled, date, algorithm)
   const blob   = await new Promise(res => canvas.toBlob(res, 'image/png'))
   trigger(blob, filename(date, 'png'))
 }
 
 // ─── PDF ─────────────────────────────────────────────────────
-export async function downloadPDF(element, date) {
-  const canvas  = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+export async function downloadPDF(scheduled, date, algorithm) {
+  const canvas  = await renderPrintTemplate(scheduled, date, algorithm)
   const imgData = canvas.toDataURL('image/png')
   const pdf     = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width / 2, canvas.height / 2] })
   pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2)
