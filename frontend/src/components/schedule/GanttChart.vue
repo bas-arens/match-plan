@@ -519,8 +519,8 @@ function positionTooltip(event) {
 }
 
 .gantt-sublane-placeholder {
-  width: 24px;
-  min-width: 24px;
+  width: 28px;
+  min-width: 28px;
 }
 
 .gantt-timeline-header {
@@ -553,6 +553,18 @@ function positionTooltip(event) {
   display: flex;
   align-items: center;
   padding: 0 8px 0 0;
+  position: relative;
+}
+
+/* Short horizontal stub from field name — stops at the elbow, never crosses vertical lines */
+.gantt-label-col::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 16px;
+  height: 1px;
+  background: #D1D5DB;
 }
 
 .gantt-field-name {
@@ -564,8 +576,8 @@ function positionTooltip(event) {
 
 /* ─── SUB-LANE LABELS ───────────────────────────────────── */
 .gantt-sublane-col {
-  width: 24px;
-  min-width: 24px;
+  width: 28px;
+  min-width: 28px;
   position: relative;
   border-right: 1px solid #F3F4F6;
 }
@@ -575,10 +587,52 @@ function positionTooltip(event) {
   left: 0; right: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 8px;
-  color: #D1D5DB;
-  border-bottom: 1px solid #F9FAFB;
+  justify-content: flex-start;
+  padding-left: 14px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Horizontal segment of each L-shape */
+.gantt-sublane-label::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 20px;
+  height: 1px;
+  background: #D1D5DB;
+}
+
+/* Vertical segment of each L-shape — connects to field name center (row midpoint) */
+.gantt-sublane-label::after {
+  content: '';
+  position: absolute;
+  left: -12px;
+  width: 1px;
+  background: #D1D5DB;
+}
+
+/* A1: 1.5 lanes above center → vertical goes DOWN 66px to row center */
+.gantt-sublane-label:nth-child(1)::after {
+  top: 50%;
+  height: 66px;
+}
+/* A2: 0.5 lanes above center → vertical goes DOWN 22px to row center */
+.gantt-sublane-label:nth-child(2)::after {
+  top: 50%;
+  height: 22px;
+}
+/* B1: 0.5 lanes below center → vertical goes UP 22px to row center */
+.gantt-sublane-label:nth-child(3)::after {
+  bottom: 50%;
+  height: 22px;
+}
+/* B2: 1.5 lanes below center → vertical goes UP 66px to row center */
+.gantt-sublane-label:nth-child(4)::after {
+  bottom: 50%;
+  height: 66px;
 }
 
 /* ─── LANES AREA ────────────────────────────────────────── */
