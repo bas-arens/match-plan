@@ -188,11 +188,12 @@ class GreedyScheduler:
     # ------------------------------------------------------------------
     # SLOT SCORING  (lower = better)
     #
-    # Primary:   field preference penalty (wrong field / avoided surface)
+    # Primary:   field preference penalty (wrong field)
     # Secondary: field already in use?   (fill fields before opening new ones)
     # Tertiary:  window penalty          (minutes outside preferred window)
+    # Quaternary: earliness              (minutes from window start, prefer early)
     #
-    # Using a 3-tuple makes each criterion dominant over the next.
+    # Using a 4-tuple makes each criterion dominant over the next.
     # ------------------------------------------------------------------
 
     def _slot_score(self, match, field_id, start_min):
@@ -201,10 +202,13 @@ class GreedyScheduler:
 
         if start_min < ws:
             window_penalty = ws - start_min
+            earliness = 0
         elif start_min > we:
             window_penalty = start_min - we
+            earliness = 0
         else:
             window_penalty = 0
+            earliness = start_min - ws  # prefer earliest slot within window
 
         field_is_new = 0 if any(s["field_id"] == field_id for s in self.schedule) else 1
 
@@ -217,7 +221,7 @@ class GreedyScheduler:
             if preferred_ids and field_id not in preferred_ids:
                 field_penalty += self.FIELD_PREF_PENALTY
 
-        return (field_penalty, field_is_new, window_penalty)
+        return (field_penalty, field_is_new, window_penalty, earliness)
 
     # ------------------------------------------------------------------
     # LOCKER ASSIGNMENT

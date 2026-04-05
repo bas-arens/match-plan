@@ -29,6 +29,7 @@ class SAScheduler:
 
     # Soft penalty weights
     WINDOW_PENALTY_PER_MIN  = 1
+    EARLY_PREF_PER_MIN      = 0.5   # prefer earlier start within the time window
     FIELD_PREF_PENALTY      = 30
     LOCKER_BUFFER           = 20
     LOCKER_PENALTY          = 50
@@ -114,13 +115,15 @@ class SAScheduler:
         for mid, fid, start, match in items:
             end = start + match["duration"]
 
-            # Time window penalty
+            # Time window penalty + earliness preference
             ws = to_min(match["preferred"]["start"])
             we = to_min(match["preferred"]["end"])
             if start < ws:
                 cost += (ws - start) * self.WINDOW_PENALTY_PER_MIN
             elif start > we:
                 cost += (start - we) * self.WINDOW_PENALTY_PER_MIN
+            else:
+                cost += (start - ws) * self.EARLY_PREF_PER_MIN
 
             # Field preference penalty
             pref = self._get_preference(match["home"])
