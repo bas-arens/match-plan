@@ -30,7 +30,6 @@ class SAScheduler:
     # Soft penalty weights
     WINDOW_PENALTY_PER_MIN  = 1
     FIELD_PREF_PENALTY      = 30
-    SURFACE_AVOID_PENALTY   = 40
     LOCKER_BUFFER           = 20
     LOCKER_PENALTY          = 50
     LOCKER_PREF_PENALTY     = 30
@@ -128,11 +127,8 @@ class SAScheduler:
             if pref:
                 field = next((f for f in self.fields if f["id"] == fid), None)
                 preferred_ids = pref.get("preferred_field_ids", [])
-                avoid_surfaces = pref.get("avoid_surfaces", [])
                 if preferred_ids and fid not in preferred_ids:
                     cost += self.FIELD_PREF_PENALTY
-                if field and field.get("surface") in avoid_surfaces:
-                    cost += self.SURFACE_AVOID_PENALTY
 
         # Pairwise constraints
         for i in range(len(items)):

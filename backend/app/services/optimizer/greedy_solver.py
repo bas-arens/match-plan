@@ -31,7 +31,6 @@ class GreedyScheduler:
     LOCKER_PENALTY       = 50   # penalty per forced locker share
     LOCKER_PREF_PENALTY  = 30   # penalty when home team's preferred locker unavailable
     FIELD_PREF_PENALTY   = 30   # penalty per match on non-preferred field
-    SURFACE_AVOID_PENALTY = 40  # penalty per match on avoided surface
     WARMUP_DURATION      = 15   # minutes of warm-up before match on the same field
 
     DEFAULT_WINDOW = {"start": "08:00", "end": "20:00"}
@@ -215,11 +214,8 @@ class GreedyScheduler:
         if pref:
             field = next((f for f in self.fields if f["id"] == field_id), None)
             preferred_ids = pref.get("preferred_field_ids", [])
-            avoid_surfaces = pref.get("avoid_surfaces", [])
             if preferred_ids and field_id not in preferred_ids:
                 field_penalty += self.FIELD_PREF_PENALTY
-            if field and field.get("surface") in avoid_surfaces:
-                field_penalty += self.SURFACE_AVOID_PENALTY
 
         return (field_penalty, field_is_new, window_penalty)
 

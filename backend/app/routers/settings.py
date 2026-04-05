@@ -91,7 +91,6 @@ class TeamPreference(BaseModel):
     start: str
     end: str
     preferred_field_ids: list[int] = []
-    avoid_surfaces: list[str] = []
 
 
 @router.get("/preferences")

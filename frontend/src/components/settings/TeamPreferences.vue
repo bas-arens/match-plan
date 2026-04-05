@@ -17,11 +17,8 @@
             <th :colspan="fields.length" class="pt-4 pb-0 pr-2">
               <div class="pb-1 border-b-2 border-gray-300">Voorkeursvelden</div>
             </th>
-            <th :colspan="lockers.length" class="pt-4 pb-0 pr-2">
+            <th :colspan="lockers.length" class="pt-4 pb-0">
               <div class="pb-1 border-b-2 border-gray-300">Kleedkamers</div>
-            </th>
-            <th colspan="2" class="pt-4 pb-0">
-              <div class="pb-1 border-b-2 border-gray-300">Vermijd ondergrond</div>
             </th>
           </tr>
           <!-- COLUMN HEADERS -->
@@ -40,8 +37,6 @@
               class="py-2 pr-2 font-medium text-center"
               style="width:48px"
             >{{ locker.name }}</th>
-            <th class="py-2 pr-2 font-medium text-center" style="width:56px">Kunstgras</th>
-            <th class="py-2 font-medium text-center" style="width:56px">Natuurgras</th>
           </tr>
         </thead>
 
@@ -51,7 +46,7 @@
             <!-- CATEGORY ROW -->
             <tr>
               <td
-                :colspan="2 + fields.length + lockers.length + 2"
+                :colspan="2 + fields.length + lockers.length"
                 class="pt-6 pb-1 text-xs font-bold uppercase tracking-widest text-gray-400"
               >{{ category }}</td>
             </tr>
@@ -85,12 +80,13 @@
                 :key="'f-' + field.id"
                 class="py-3 pr-2 text-center"
               >
-                <input
-                  type="checkbox"
-                  :checked="team.preferred_field_ids.includes(field.id)"
-                  @change="toggleItem(team, 'preferred_field_ids', field.id, $event)"
-                  class="accent-gray-700 cursor-pointer"
-                />
+                <button
+                  @click="toggleItem(team, 'preferred_field_ids', field.id)"
+                  class="font-mono text-xs leading-none select-none transition-colors"
+                  :class="team.preferred_field_ids.includes(field.id)
+                    ? 'text-gray-800 dark:text-gray-100'
+                    : 'text-gray-300 dark:text-gray-600 hover:text-gray-500'"
+                >{{ team.preferred_field_ids.includes(field.id) ? '[×]' : '[ ]' }}</button>
               </td>
 
               <!-- Locker preference checkboxes -->
@@ -99,33 +95,15 @@
                 :key="'l-' + locker.id"
                 class="py-3 pr-2 text-center"
               >
-                <input
-                  type="checkbox"
-                  :checked="team.preferred_locker_ids.includes(locker.id)"
-                  @change="toggleItem(team, 'preferred_locker_ids', locker.id, $event)"
-                  class="accent-gray-700 cursor-pointer"
-                />
+                <button
+                  @click="toggleItem(team, 'preferred_locker_ids', locker.id)"
+                  class="font-mono text-xs leading-none select-none transition-colors"
+                  :class="team.preferred_locker_ids.includes(locker.id)
+                    ? 'text-gray-800 dark:text-gray-100'
+                    : 'text-gray-300 dark:text-gray-600 hover:text-gray-500'"
+                >{{ team.preferred_locker_ids.includes(locker.id) ? '[×]' : '[ ]' }}</button>
               </td>
 
-              <!-- Avoid kunstgras -->
-              <td class="py-3 pr-4 text-center">
-                <input
-                  type="checkbox"
-                  :checked="team.avoid_surfaces.includes('kunstgras')"
-                  @change="toggleSurface(team, 'kunstgras', $event)"
-                  class="accent-gray-700 cursor-pointer"
-                />
-              </td>
-
-              <!-- Avoid natuurgras -->
-              <td class="py-3 text-center">
-                <input
-                  type="checkbox"
-                  :checked="team.avoid_surfaces.includes('natuurgras')"
-                  @change="toggleSurface(team, 'natuurgras', $event)"
-                  class="accent-gray-700 cursor-pointer"
-                />
-              </td>
             </tr>
 
           </template>
@@ -141,15 +119,14 @@
 // File:    src/components/settings/TeamPreferences.vue
 // Author:  Bas Arens
 // Purpose: Settings table for per-team planning preferences — time windows
-//          (via drag slider), preferred fields, preferred locker rooms, and
-//          surfaces to avoid. Teams are grouped by Sportlink category.
-//          All changes are auto-saved via a debounced save (600 ms).
+//          (via drag slider), preferred fields, and preferred locker rooms.
+//          Teams are grouped by Sportlink category. All changes are
+//          auto-saved via a debounced save (600 ms).
 //
 // Functions:
-//   flatten         — converts { category → teams[] } to a flat preferences array
-//   toggleItem      — adds/removes a field or locker id from a team's preference list
-//   toggleSurface   — adds/removes a surface string from a team's avoid list
-//   debouncedSave   — debounced call to savePreferences via autosave
+//   flatten        — converts { category → teams[] } to a flat preferences array
+//   toggleItem     — adds/removes a field or locker id from a team's preference list
+//   debouncedSave  — debounced call to savePreferences via autosave
 // ─────────────────────────────────────────────────────────────────────────────
 import { ref, onMounted } from 'vue'
 import TimeRangeSlider from '@/components/common/TimeRangeSlider.vue'
@@ -187,15 +164,14 @@ onMounted(async () => {
       const start = prev?.start ?? '09:00'
       const end   = prev?.end   ?? '17:00'
       return {
-        team:                name,
+        team:                 name,
         category,
         start,
         end,
-        rangeStart:          timeToMin(start),
-        rangeEnd:            timeToMin(end),
+        rangeStart:           timeToMin(start),
+        rangeEnd:             timeToMin(end),
         preferred_field_ids:  prev?.preferred_field_ids  ?? [],
         preferred_locker_ids: prev?.preferred_locker_ids ?? [],
-        avoid_surfaces:       prev?.avoid_surfaces       ?? [],
       }
     })
   }
@@ -209,20 +185,11 @@ function flatten(obj) {
   return Object.values(obj).flat().map(({ rangeStart, rangeEnd, ...rest }) => rest)
 }
 
-function toggleItem(team, key, id, event) {
-  if (event.target.checked) {
-    team[key] = [...team[key], id]
-  } else {
+function toggleItem(team, key, id) {
+  if (team[key].includes(id)) {
     team[key] = team[key].filter(x => x !== id)
-  }
-  debouncedSave()
-}
-
-function toggleSurface(team, surface, event) {
-  if (event.target.checked) {
-    team.avoid_surfaces = [...team.avoid_surfaces, surface]
   } else {
-    team.avoid_surfaces = team.avoid_surfaces.filter(s => s !== surface)
+    team[key] = [...team[key], id]
   }
   debouncedSave()
 }
