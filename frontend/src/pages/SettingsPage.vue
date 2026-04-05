@@ -36,6 +36,14 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/pages/SettingsPage.vue
+// Author:  MatchPlan
+// Purpose: Settings page with three tabs:
+//            • Velden & Kleedkamers  — field and locker room configuration
+//            • Tijdvensters & Voorkeuren — team time-window and preference config
+//            • Optimizer             — algorithm selection
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref } from 'vue'
 import FieldsSettings     from '@/components/settings/Fields.vue'
 import LockerRoomSettings from '@/components/settings/Lockerrooms.vue'

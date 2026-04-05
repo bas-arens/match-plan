@@ -31,6 +31,17 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/pages/HomePage.vue
+// Author:  MatchPlan
+// Purpose: Main landing page — shows the calendar and match list side-by-side.
+//          Lets the user pick a date and trigger the planning optimizer.
+//
+// Functions:
+//   onDateSelected  — stores the Date object emitted by the Calendar component
+//   planMatchday    — calls the optimizer API for the selected date; on success
+//                     saves the result to planStore and navigates to /matchplan
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout  from '@/components/layout/main-layout.vue'

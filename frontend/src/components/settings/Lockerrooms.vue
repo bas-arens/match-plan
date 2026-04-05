@@ -41,6 +41,18 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/settings/Lockerrooms.vue
+// Author:  MatchPlan
+// Purpose: Settings panel for managing locker rooms — name only.
+//          Changes are auto-saved via a debounced save (600 ms).
+//          New locker IDs are generated with crypto.randomUUID().
+//
+// Functions:
+//   addRoom          — appends a new default locker room and triggers a save
+//   removeRoom       — removes a room by id and triggers a save
+//   saveWithDebounce — debounced call to saveLockers via autosave
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref, onMounted } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
 import { getLockers, saveLockers } from '@/services/settings'

@@ -29,6 +29,15 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/matches/match-list.vue
+// Author:  MatchPlan
+// Purpose: Renders the list of matches for the selected date using MatchItem.
+//          Shows a placeholder message when no matches are available.
+//
+// Props:
+//   matches  — array of match objects from the Sportlink API (required)
+// ─────────────────────────────────────────────────────────────────────────────
 import MatchItem from './match-item.vue'
 
 defineProps({

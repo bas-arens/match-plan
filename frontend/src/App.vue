@@ -7,6 +7,12 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/App.vue
+// Author:  MatchPlan
+// Purpose: Root application component. Renders the navbar (hidden on /login),
+//          the current route view, and the global Toast notification overlay.
+// ─────────────────────────────────────────────────────────────────────────────
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import Navbar from '@/components/layout/navbar.vue'

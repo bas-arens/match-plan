@@ -22,6 +22,14 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/common/Toast.vue
+// Author:  MatchPlan
+// Purpose: Global toast notification overlay. Mounted once in App.vue via a
+//          Teleport to <body>. Reads from the shared useNotification queue —
+//          any component can push a message with notify() and it appears here.
+//          Toasts animate in from below and slide out to the right on dismiss.
+// ─────────────────────────────────────────────────────────────────────────────
 import { useNotification } from '@/composables/useNotification.js'
 const { notifications, dismiss } = useNotification()
 </script>

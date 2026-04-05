@@ -50,6 +50,31 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/calendar/calendar.vue
+// Author:  MatchPlan
+// Purpose: Custom calendar grid component (Monday-first, Dutch locale).
+//          Fetches home-match dates on mount and highlights them with a green
+//          dot. Selecting a day loads the matches for that day via the API.
+//
+// Props:
+//   modelValue  — v-model array of match objects for the selected date
+//
+// Emits:
+//   update:modelValue  — emits the match array after selecting a day
+//   dateSelected       — emits the selected Date object
+//
+// Functions:
+//   isoForDay    — builds an ISO date string for a day number in the current month
+//   isToday      — returns true if the given day is today
+//   isSelected   — returns true if the given day is the selected date
+//   hasMatches   — returns true if the given day has home matches
+//   toISO        — converts a Date to an ISO string using the local timezone
+//   prevMonth    — navigate to the previous month
+//   nextMonth    — navigate to the next month
+//   goToday      — jump to today and select it
+//   selectDay    — select a day, fetch its matches, emit results
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref, computed, watch, onMounted } from 'vue'
 import { getDatumLijst, getProgrammaOpDatum } from '@/services/sportlink.js'
 

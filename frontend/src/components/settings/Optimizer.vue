@@ -45,6 +45,16 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/settings/Optimizer.vue
+// Author:  MatchPlan
+// Purpose: Algorithm selection panel — shows clickable cards for Greedy,
+//          Simulated Annealing, and MILP with plain-language descriptions
+//          using football analogies. Selection is auto-saved.
+//
+// Functions:
+//   select  — updates the selected algorithm and triggers a debounced save
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref, onMounted } from 'vue'
 import { getOptimizer, saveOptimizer } from '@/services/settings'
 import { autosave } from '@/utils/autosave'

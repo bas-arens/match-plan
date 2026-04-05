@@ -60,6 +60,20 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/schedule/PrintTemplate.vue
+// Author:  MatchPlan
+// Purpose: Off-screen print/export template rendered by html2canvas when the
+//          user downloads PNG or PDF. Uses only system fonts (Helvetica Neue,
+//          Arial, Courier New) to avoid html2canvas web-font clipping issues.
+//          Not used directly in any route — mounted programmatically by
+//          src/services/download.js.
+//
+// Props:
+//   scheduled   — array of scheduled match objects to render in the table
+//   date        — ISO date string displayed in the header and footer
+//   algorithm   — optimizer algorithm name shown in the header metadata
+// ─────────────────────────────────────────────────────────────────────────────
 import { computed } from 'vue'
 
 const props = defineProps({

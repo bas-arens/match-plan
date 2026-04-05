@@ -1,4 +1,13 @@
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/layout/navbar.vue
+// Author:  MatchPlan
+// Purpose: Top navigation bar — club logo, page links, dark/light theme toggle,
+//          and a logout button shown when the user has an active session.
+//
+// Functions:
+//   logout  — clears auth state and redirects to /login
+// ─────────────────────────────────────────────────────────────────────────────
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ref, onMounted } from 'vue'
 import { Sun, Moon, LogOut } from 'lucide-vue-next'

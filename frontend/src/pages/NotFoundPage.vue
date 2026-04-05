@@ -14,5 +14,11 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/pages/NotFoundPage.vue
+// Author:  MatchPlan
+// Purpose: Catch-all 404 page rendered for any route that does not match a
+//          defined path. Provides a link back to the calendar.
+// ─────────────────────────────────────────────────────────────────────────────
 import { RouterLink } from 'vue-router'
 </script>

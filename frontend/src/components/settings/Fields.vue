@@ -51,6 +51,18 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/settings/Fields.vue
+// Author:  MatchPlan
+// Purpose: Settings panel for managing football fields — name, grass type.
+//          Changes are auto-saved via a debounced save (600 ms).
+//          New field IDs are generated with crypto.randomUUID().
+//
+// Functions:
+//   addField        — appends a new default field and triggers a save
+//   removeField     — removes a field by id and triggers a save
+//   saveWithDebounce — debounced call to saveFields via autosave
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref, onMounted } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
 import { getFields, saveFields } from '@/services/settings'

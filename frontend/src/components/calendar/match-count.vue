@@ -10,6 +10,15 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/calendar/match-count.vue
+// Author:  MatchPlan
+// Purpose: Displays the number of matches on the selected date as a large
+//          bold number with a muted label. Shown below the Plan Matchday button.
+//
+// Props:
+//   count  — number of matches to display (default: 0)
+// ─────────────────────────────────────────────────────────────────────────────
 defineProps({
   count: { type: Number, default: 0 },
 })

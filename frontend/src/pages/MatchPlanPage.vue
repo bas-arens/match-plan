@@ -123,6 +123,17 @@
 
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/pages/MatchPlanPage.vue
+// Author:  MatchPlan
+// Purpose: Displays the generated match planning result — a Gantt chart for
+//          visual scheduling and a locker-room assignment table.
+//          Also provides a download button (CSV / Excel / PNG / PDF).
+//
+// Functions:
+//   handleDownload   — delegates to the appropriate download service function
+//   onClickOutside   — closes the download dropdown when clicking elsewhere
+// ─────────────────────────────────────────────────────────────────────────────
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { planStore } from '@/stores/planStore'
 import GanttChart from '@/components/schedule/GanttChart.vue'

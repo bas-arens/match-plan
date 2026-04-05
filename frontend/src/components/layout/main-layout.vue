@@ -19,5 +19,13 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/layout/main-layout.vue
+// Author:  MatchPlan
+// Purpose: Two-column page layout used by the calendar / home page.
+//          Left panel (gray background) for the match list, right panel
+//          (white) for the calendar and controls.
+//          Slots: #left, #right
+// ─────────────────────────────────────────────────────────────────────────────
 import Navbar from '@/components/layout/navbar.vue'
 </script>

@@ -137,6 +137,20 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/settings/TeamPreferences.vue
+// Author:  MatchPlan
+// Purpose: Settings table for per-team planning preferences — time windows
+//          (via drag slider), preferred fields, preferred locker rooms, and
+//          surfaces to avoid. Teams are grouped by Sportlink category.
+//          All changes are auto-saved via a debounced save (600 ms).
+//
+// Functions:
+//   flatten         — converts { category → teams[] } to a flat preferences array
+//   toggleItem      — adds/removes a field or locker id from a team's preference list
+//   toggleSurface   — adds/removes a surface string from a team's avoid list
+//   debouncedSave   — debounced call to savePreferences via autosave
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref, onMounted } from 'vue'
 import TimeRangeSlider from '@/components/common/TimeRangeSlider.vue'
 import { getTeams } from '@/services/sportlink.js'

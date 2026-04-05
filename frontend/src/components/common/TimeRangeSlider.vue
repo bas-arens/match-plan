@@ -47,6 +47,29 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/common/TimeRangeSlider.vue
+// Author:  MatchPlan
+// Purpose: Dual-handle range slider for selecting a time window in minutes.
+//          Supports both mouse and touch events. Used in TeamPreferences to
+//          set per-team earliest/latest start times.
+//
+// Props:
+//   modelStart  — start value in minutes since midnight (required)
+//   modelEnd    — end value in minutes since midnight (required)
+//   min         — minimum selectable value in minutes (default: 07:00)
+//   max         — maximum selectable value in minutes (default: 23:00)
+//   step        — snap interval in minutes (default: 15)
+//
+// Functions:
+//   tickPercent      — converts an hour label to a % position on the track
+//   formatMin        — formats minutes as "HH:MM"
+//   snapToStep       — rounds a raw minute value to the nearest step
+//   clientXFromEvent — extracts clientX from both mouse and touch events
+//   onMove           — handles drag movement and emits updated values
+//   onUp             — ends a drag and removes window event listeners
+//   startDrag        — initiates a drag on a handle
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref, computed, onUnmounted } from "vue"
 
 const props = defineProps({

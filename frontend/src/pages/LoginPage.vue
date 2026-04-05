@@ -56,6 +56,16 @@
 </template>
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/pages/LoginPage.vue
+// Author:  MatchPlan
+// Purpose: Login page — email/password form that calls POST /auth/login.
+//          On success, persists the JWT token via setAuth() and navigates
+//          to the calendar. Shown without the navbar.
+//
+// Functions:
+//   handleLogin  — submits credentials, stores token, redirects on success
+// ─────────────────────────────────────────────────────────────────────────────
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Loader2 } from 'lucide-vue-next'

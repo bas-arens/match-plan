@@ -151,6 +151,28 @@
 
 
 <script setup>
+// ─────────────────────────────────────────────────────────────────────────────
+// File:    src/components/schedule/GanttChart.vue
+// Author:  MatchPlan
+// Purpose: Interactive Gantt chart for visualising and manually adjusting the
+//          generated match planning. Supports drag-and-drop to move matches
+//          between fields and time slots, with real-time penalty recalculation.
+//
+// Props:
+//   scheduled    — array of scheduled match objects from the optimizer
+//   preferences  — team time-window and field/locker preferences
+//   allFields    — all configured fields (for surface penalty checks)
+//   lockers      — all configured locker rooms
+//
+// Key functions:
+//   laned           — bin-packs matches into lanes per field (computed)
+//   penalties       — calculates all active penalties in real time (computed)
+//   blockStyle      — returns inline style for a match block on the timeline
+//   subFieldLabel   — returns A/B or A1/A2/B1/B2 for sub-field divisions
+//   onBlockMousedown — starts a drag operation
+//   onMouseMove     — updates ghost position and snaps drop target
+//   commitDrag      — applies the drag result to localSchedule
+// ─────────────────────────────────────────────────────────────────────────────
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { timeToMin } from '@/utils/time.js'
 
