@@ -268,7 +268,7 @@ const laned = computed(() => {
       const end   = start + m.duration
       const count = laneCount(m.field_size)
       let laneStart = 0
-      outer: for (let i = 0; i <= 4 - count; i++) {
+      outer: for (let i = 0; i <= 4 - count; i += count) {
         for (let j = i; j < i + count; j++) {
           if (laneEnd[j] > start) continue outer
         }
