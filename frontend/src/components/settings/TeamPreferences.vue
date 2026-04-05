@@ -32,9 +32,10 @@
               style="width:48px"
             >{{ field.name }}</th>
             <th
-              v-for="locker in lockers"
+              v-for="(locker, i) in lockers"
               :key="'lh-' + locker.id"
               class="py-2 pr-2 font-medium text-center"
+              :class="i === 0 ? 'border-l border-gray-200 pl-3' : ''"
               style="width:48px"
             >{{ locker.name }}</th>
           </tr>
@@ -91,9 +92,10 @@
 
               <!-- Locker preference checkboxes -->
               <td
-                v-for="locker in lockers"
+                v-for="(locker, i) in lockers"
                 :key="'l-' + locker.id"
                 class="py-3 pr-2 text-center"
+                :class="i === 0 ? 'border-l border-gray-200 pl-3' : ''"
               >
                 <button
                   @click="toggleItem(team, 'preferred_locker_ids', locker.id)"
