@@ -1,3 +1,13 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/models/settings.py
+# Author:  Bas Arens
+# Purpose: Pydantic request/response models for the settings endpoints.
+#          Covers fields (FieldItem, FieldsPayload), locker rooms
+#          (LockerRoom, LockerRoomPayload), team time windows
+#          (TeamWindowItem, TeamWindowPayload), and optimizer config
+#          (OptimizerSettings).
+# ─────────────────────────────────────────────────────────────────────────────
+
 from pydantic import BaseModel
 from typing import List, Optional
 

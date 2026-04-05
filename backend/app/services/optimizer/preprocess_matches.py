@@ -1,3 +1,14 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/services/optimizer/preprocess_matches.py
+# Author:  Bas Arens
+# Purpose: Enriches raw Sportlink match dicts with derived planning data
+#          (duration, field_size, team time windows, fields, lockers) so the
+#          solver modules receive a uniform, self-contained match list.
+#
+# Functions:
+#   preprocess_matches(matches, settings) — returns enriched match list
+# ─────────────────────────────────────────────────────────────────────────────
+
 from app.services.sportlink import infer_field_size, infer_duration
 
 def preprocess_matches(matches, settings):

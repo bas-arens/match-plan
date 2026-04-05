@@ -1,3 +1,14 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/services/sportlink_startup.py
+# Author:  Bas Arens
+# Purpose: Startup helper that fetches club name and code from Sportlink and
+#          populates settings.CLUB_NAME / settings.CLUB_CODE so they are
+#          available for home-match filtering throughout the application.
+#
+# Functions:
+#   load_club_info() — fetch /clubgegevens and populate global settings
+# ─────────────────────────────────────────────────────────────────────────────
+
 import httpx
 from app.core.config import settings
 

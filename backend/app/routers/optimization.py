@@ -1,3 +1,15 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/routers/optimization.py
+# Author:  Bas Arens
+# Purpose: Optimization endpoints that load settings, fetch Sportlink matches,
+#          and dispatch to the selected solver (Greedy, SA, or MILP).
+#
+# Endpoints:
+#   GET  /optimize/settings — return all saved settings (fields, lockers, etc.)
+#   POST /optimize/run      — run the optimizer for a given date and return
+#                             the resulting schedule
+# ─────────────────────────────────────────────────────────────────────────────
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 

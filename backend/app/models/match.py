@@ -1,3 +1,11 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/models/match.py
+# Author:  Bas Arens
+# Purpose: Pydantic model for a single match entry as used internally by the
+#          planning system. duration and field_size are inferred at runtime
+#          from the team name if not provided by Sportlink.
+# ─────────────────────────────────────────────────────────────────────────────
+
 from pydantic import BaseModel
 
 class Match(BaseModel):

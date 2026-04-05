@@ -1,3 +1,21 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/routers/settings.py
+# Author:  Bas Arens
+# Purpose: CRUD endpoints for club configuration stored in JSON files under
+#          app/data/. Covers fields, locker rooms, team preferences, and
+#          optimizer algorithm selection.
+#
+# Endpoints:
+#   GET  /settings/fields       — load saved fields
+#   POST /settings/fields       — save fields list
+#   GET  /settings/lockers      — load saved locker rooms
+#   POST /settings/lockers      — save locker rooms list
+#   GET  /settings/preferences  — load team time preferences
+#   POST /settings/preferences  — save team time preferences
+#   GET  /settings/optimizer    — load optimizer algorithm config
+#   POST /settings/optimizer    — save optimizer algorithm config
+# ─────────────────────────────────────────────────────────────────────────────
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import json

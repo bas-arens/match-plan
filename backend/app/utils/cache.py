@@ -1,4 +1,12 @@
-# app/utils/cache.py
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/utils/cache.py
+# Author:  Bas Arens
+# Purpose: Simple in-process cache for Sportlink match data with a 10-minute
+#          TTL so the full /programma endpoint is not called on every request.
+#
+# Functions:
+#   get_cached_matches(client_id) — return cached matches or fetch fresh data
+# ─────────────────────────────────────────────────────────────────────────────
 
 import time
 import requests

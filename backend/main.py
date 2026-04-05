@@ -1,3 +1,17 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/main.py
+# Author:  Bas Arens
+# Purpose: FastAPI application entry point. Registers all routers, configures
+#          CORS, and fetches club info from Sportlink on startup via the
+#          lifespan context so CLUB_NAME and CLUB_CODE are available globally.
+#
+# Routers:
+#   /sportlink   — Sportlink data proxy (matches, teams, logo)
+#   /schedule    — schedule retrieval (stub)
+#   /optimize    — match planning optimizer
+#   /settings    — club configuration (fields, lockers, preferences)
+# ─────────────────────────────────────────────────────────────────────────────
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager

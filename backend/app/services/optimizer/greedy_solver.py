@@ -1,3 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/services/optimizer/greedy_solver.py
+# Author:  Bas Arens
+# Purpose: Greedy match scheduler that places the hardest matches first
+#          (narrowest time window, largest field, most team conflicts) and
+#          scores each candidate slot by field preference, window deviation,
+#          and locker availability.
+#
+# Classes:
+#   GreedyScheduler — __init__, solve()
+#
+# Key constants:
+#   LOCKER_BUFFER, LOCKER_PENALTY, LOCKER_PREF_PENALTY,
+#   FIELD_PREF_PENALTY, SURFACE_AVOID_PENALTY, WARMUP_DURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
 import re
 from datetime import datetime, timedelta
 

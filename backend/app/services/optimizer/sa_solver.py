@@ -1,3 +1,17 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/services/optimizer/sa_solver.py
+# Author:  Bas Arens
+# Purpose: Simulated annealing scheduler that starts from the greedy solution
+#          and iteratively improves it by randomly moving/swapping matches
+#          between time slots and fields, accepting worse solutions with a
+#          temperature-dependent probability.
+#
+# Classes:
+#   SAScheduler — __init__, solve()
+#
+# Annealing parameters: T_INIT=300, T_MIN=0.5, COOLING=0.995, ITER_PER_T=40
+# ─────────────────────────────────────────────────────────────────────────────
+
 import math
 import random
 import re

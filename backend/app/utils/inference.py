@@ -1,3 +1,15 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/utils/inference.py
+# Author:  Bas Arens
+# Purpose: Utility functions that derive match planning parameters from the
+#          Dutch team name (e.g. "JO9", "MO11") when Sportlink does not
+#          provide them directly.
+#
+# Functions:
+#   infer_field_size(team_name) — returns field fraction (0.25 / 0.5 / 0.75 / 1.0)
+#   infer_duration(team_name)   — returns match duration in minutes
+# ─────────────────────────────────────────────────────────────────────────────
+
 def infer_field_size(team_name: str) -> float:
     t = team_name.upper()
 

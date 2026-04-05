@@ -1,4 +1,18 @@
-# app/routers/sportlink.py
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/routers/sportlink.py
+# Author:  Bas Arens
+# Purpose: FastAPI router that proxies all Sportlink data to the frontend.
+#
+# Endpoints:
+#   GET /sportlink/clubgegevens          — full club info passthrough
+#   GET /sportlink/programma             — all matches (unfiltered)
+#   GET /sportlink/logo                  — club logo URL
+#   GET /sportlink/programma/datum       — home matches on a specific date
+#   GET /sportlink/programma/datumlijst  — list of unique home match dates
+#   GET /sportlink/wedstrijd/{code}      — full match info for one match
+#   GET /sportlink/wedstrijd/statistieken/{code} — match statistics
+#   GET /sportlink/teams                 — teams grouped by age category
+# ─────────────────────────────────────────────────────────────────────────────
 
 from fastapi import APIRouter, HTTPException, Query
 from app.services import sportlink

@@ -1,4 +1,23 @@
-# app/services/sportlink.py
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/services/sportlink.py
+# Author:  Bas Arens
+# Purpose: Async Sportlink API wrapper used by routers and the optimizer.
+#
+# Functions:
+#   fetch(endpoint, params)           — generic GET helper with client_id injection
+#   get_club_info()                   — fetch club name + code from /clubgegevens
+#   get_club_logo()                   — return URL to the club logo image
+#   get_all_matches()                 — fetch full unfiltered /programma
+#   is_home_match(match, club_code)   — check if match is a home game
+#   get_home_match_dates()            — sorted list of unique home match dates
+#   get_matches_for_date(date_str)    — home matches filtered by date
+#   get_match_info(wedstrijdcode)     — full /wedstrijd-informatie for one match
+#   get_match_statistics(wedstrijdcode) — /wedstrijd-statistieken for one match
+#   get_teams()                       — teams grouped by age category
+#   enrich_match_info(match, client_id) — add duration + field_size to a match
+#   infer_field_size(team_name)       — derive field fraction from team name
+#   infer_duration(team_name)         — derive match duration from team name
+# ─────────────────────────────────────────────────────────────────────────────
 
 import httpx
 from datetime import datetime, timedelta

@@ -1,3 +1,20 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# File:    backend/app/services/optimizer/milp_solver.py
+# Author:  Bas Arens
+# Purpose: Mixed-Integer Linear Programming scheduler using PuLP + CBC.
+#          Formulates match placement as an MILP problem with binary variables
+#          for slot assignment (x), locker assignment (y), and non-overlap
+#          ordering (z_team, z_lock). Minimizes deviation from team time windows.
+#
+# Classes:
+#   MILPScheduler — __init__, build(), solve(), _extract_solution()
+#
+# Standalone helpers:
+#   to_minutes(t)          — "HH:MM" to integer minutes
+#   infer_field_size(name) — field fraction from team name
+#   infer_duration(name)   — match duration from team name
+# ─────────────────────────────────────────────────────────────────────────────
+
 from pulp import (
     LpProblem, LpMinimize, LpVariable, LpBinary, lpSum, PULP_CBC_CMD
 )
