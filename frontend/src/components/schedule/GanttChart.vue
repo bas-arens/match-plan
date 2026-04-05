@@ -87,6 +87,18 @@
       </div>
     </div>
 
+    <!-- LEGEND -->
+    <div class="gantt-legend">
+      <div
+        v-for="group in legendGroups"
+        :key="group"
+        class="gantt-legend-item"
+      >
+        <span class="gantt-legend-dot" :style="{ backgroundColor: AGE_GROUP_COLORS[group] }" />
+        <span class="gantt-legend-label">{{ AGE_GROUP_LABELS[group] }}</span>
+      </div>
+    </div>
+
     <!-- PENALTY PANEL -->
     <div class="penalty-panel">
       <div class="penalty-header">
@@ -200,10 +212,31 @@ const FIELD_PREF_PENALTY    = 30
 const SURFACE_AVOID_PENALTY = 40
 const TEAM_OVERLAP_PENALTY  = 500
 
-const DOT_COLORS = [
-  '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B',
-  '#F43F5E', '#06B6D4', '#D946EF', '#84CC16',
-]
+const AGE_GROUP_COLORS = {
+  'senioren': '#3B82F6',  // blue
+  'jo7-9':    '#10B981',  // emerald  — youngest
+  'jo10-12':  '#F59E0B',  // amber
+  'jo13-15':  '#F43F5E',  // rose
+  'jo16-19':  '#8B5CF6',  // violet
+}
+
+const AGE_GROUP_LABELS = {
+  'senioren': 'Senioren',
+  'jo7-9':    'JO/MO 7–9',
+  'jo10-12':  'JO/MO 10–12',
+  'jo13-15':  'JO/MO 13–15',
+  'jo16-19':  'JO/MO 16–19',
+}
+
+function ageGroup(teamName) {
+  const m = teamName.toUpperCase().match(/[JM]O(\d+)/)
+  if (!m) return 'senioren'
+  const age = parseInt(m[1])
+  if (age <= 9)  return 'jo7-9'
+  if (age <= 12) return 'jo10-12'
+  if (age <= 15) return 'jo13-15'
+  return 'jo16-19'
+}
 
 const PENALTY_COLORS = {
   window:  '#EAB308',
@@ -283,15 +316,15 @@ const laned = computed(() => {
 })
 
 // ─── COLORS ──────────────────────────────────────────────────
-const colorIndex = computed(() => {
-  const map = {}
-  props.scheduled.forEach((m, i) => { map[m.match_id] = i % DOT_COLORS.length })
-  return map
-})
-
 function dotColor(matchId) {
-  return DOT_COLORS[colorIndex.value[matchId] ?? 0]
+  const match = laned.value.find(m => m.match_id === matchId)
+  return match ? AGE_GROUP_COLORS[ageGroup(match.home)] : '#9CA3AF'
 }
+
+const legendGroups = computed(() => {
+  const seen = new Set(laned.value.map(m => ageGroup(m.home)))
+  return Object.keys(AGE_GROUP_COLORS).filter(g => seen.has(g))
+})
 
 // ─── BLOCK STYLE ─────────────────────────────────────────────
 function blockStyle(m) {
@@ -739,6 +772,34 @@ function positionTooltip(event) {
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   opacity: 0.95;
+}
+
+/* ─── LEGEND ────────────────────────────────────────────── */
+.gantt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.gantt-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gantt-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.gantt-legend-label {
+  font-size: 10px;
+  color: #6B7280;
 }
 
 /* ─── PENALTY PANEL ─────────────────────────────────────── */
