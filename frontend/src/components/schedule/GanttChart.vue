@@ -301,6 +301,19 @@ const laned = computed(() => {
       const end   = start + m.duration
       const count = laneCount(m.field_size)
       let laneStart = 0
+
+      // Respect manual lane override from drag-and-drop if those lanes are free
+      if (m.laneOverride !== undefined) {
+        const ov = m.laneOverride
+        const free = [...Array(count)].every((_, k) => laneEnd[ov + k] <= start)
+        if (free) {
+          for (let j = ov; j < ov + count; j++) laneEnd[j] = end
+          result.push({ ...m, laneStart: ov, laneCount: count })
+          continue
+        }
+      }
+
+      // Auto bin-packing: aligned placement
       outer: for (let i = 0; i <= 4 - count; i += count) {
         for (let j = i; j < i + count; j++) {
           if (laneEnd[j] > start) continue outer
@@ -436,7 +449,7 @@ const lanesAreaRefs = {}
 const drag = reactive({
   active: false, matchId: null,
   mouseX: 0, mouseY: 0,
-  targetFieldId: null, targetTime: null,
+  targetFieldId: null, targetTime: null, targetLane: 0,
 })
 
 const dragMatch = computed(() =>
@@ -447,6 +460,7 @@ function onBlockMousedown(m, event) {
   drag.active = true; drag.matchId = m.match_id
   drag.mouseX = event.clientX; drag.mouseY = event.clientY
   drag.targetFieldId = m.field_id; drag.targetTime = m.time
+  drag.targetLane = m.laneStart ?? 0
   tooltip.visible = false
   window.addEventListener('mouseup', commitDrag, { once: true })
 }
@@ -460,9 +474,15 @@ function onMouseMove(event) {
     const rect = el.getBoundingClientRect()
     if (event.clientY >= rect.top && event.clientY <= rect.bottom) {
       drag.targetFieldId = f.id
-      const frac    = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
-      const snapped = Math.round((DAY_START + frac * DAY_DURATION) / SLOT_SIZE) * SLOT_SIZE
+      // Horizontal: snap to time slot
+      const fracX   = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+      const snapped = Math.round((DAY_START + fracX * DAY_DURATION) / SLOT_SIZE) * SLOT_SIZE
       drag.targetTime = minToTime(snapped)
+      // Vertical: snap to aligned lane for this match's size
+      const count   = dragMatch.value?.laneCount ?? 1
+      const fracY   = Math.max(0, Math.min(0.999, (event.clientY - rect.top) / rect.height))
+      const rawLane = Math.floor(fracY * LANES.length)
+      drag.targetLane = Math.min(Math.floor(rawLane / count) * count, LANES.length - count)
       break
     }
   }
@@ -482,6 +502,7 @@ function commitDrag() {
         field_id: drag.targetFieldId,
         field_name: field?.name ?? drag.targetFieldId,
         time: drag.targetTime,
+        laneOverride: drag.targetLane,
       }
     }
   }
@@ -512,7 +533,7 @@ const dropTargetStyle = computed(() => {
   return {
     position: 'absolute',
     left: `${left}%`, width: `calc(${width}% - 2px)`,
-    top: '1px', height: `${LANES.length * LANE_H - 2}px`,
+    top: `${drag.targetLane * LANE_H + 1}px`, height: `${m.laneCount * LANE_H - 2}px`,
     background: 'rgba(0,0,0,0.04)',
     border: '1px dashed #9CA3AF',
     borderRadius: '2px',
