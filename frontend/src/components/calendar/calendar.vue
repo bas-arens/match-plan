@@ -2,7 +2,7 @@
   <div class="cal">
 
     <!-- NAVIGATION -->
-    <div class="cal-nav">
+    <div class="cal-nav" :class="{ 'cal-loading': loading }">
       <button class="cal-nav-btn" @click="prevMonth">‹</button>
       <span class="cal-month-label">{{ monthLabel }}</span>
       <button class="cal-nav-btn" @click="nextMonth">›</button>
@@ -24,7 +24,9 @@
           'is-today':    isToday(day),
           'is-selected': isSelected(day),
           'has-matches': hasMatches(day),
+          'is-loading':  loading,
         }"
+        :disabled="loading"
         @click="selectDay(day)"
       >
         <span class="cal-day-num">{{ day }}</span>
@@ -35,7 +37,8 @@
     <!-- FOOTER -->
     <div class="cal-footer">
       <button class="cal-today-btn" @click="goToday">vandaag</button>
-      <span v-if="selectedDate" class="cal-match-count">
+      <span v-if="loading" class="cal-match-count">laden...</span>
+      <span v-else-if="selectedDate" class="cal-match-count">
         <template v-if="matches.length > 0">
           {{ matches.length }} {{ matches.length === 1 ? 'wedstrijd' : 'wedstrijden' }}
         </template>
@@ -58,9 +61,10 @@ const DAY_HEADERS = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo']
 const today         = new Date()
 const currentYear   = ref(today.getFullYear())
 const currentMonth  = ref(today.getMonth())  // 0-indexed
-const selectedDate  = ref(null)
+const selectedDate   = ref(null)
 const availableDates = ref([])
 const matches        = ref(props.modelValue ?? [])
+const loading        = ref(false)
 
 // ─── MONTH LABEL ─────────────────────────────────────────────
 const MONTHS = ['januari','februari','maart','april','mei','juni',
@@ -125,16 +129,26 @@ async function selectDay(day) {
   selectedDate.value = new Date(currentYear.value, currentMonth.value, day)
   const iso = isoForDay(day)
   emit('dateSelected', selectedDate.value)
-  const result = await getProgrammaOpDatum(iso)
-  matches.value = result
-  emit('update:modelValue', result)
+  loading.value = true
+  try {
+    const result = await getProgrammaOpDatum(iso)
+    matches.value = result
+    emit('update:modelValue', result)
+  } finally {
+    loading.value = false
+  }
 }
 
 // ─── INIT ────────────────────────────────────────────────────
 onMounted(async () => {
-  const raw = await getDatumLijst()
-  availableDates.value = raw  // already ISO strings from API
-  await selectDay(today.getDate())
+  loading.value = true
+  try {
+    const raw = await getDatumLijst()
+    availableDates.value = raw
+    await selectDay(today.getDate())
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -280,6 +294,15 @@ onMounted(async () => {
 .cal-match-count {
   font-size: 10px;
   color: #9CA3AF;
+}
+
+.cal-nav.cal-loading .cal-month-label {
+  opacity: 0.4;
+}
+
+.cal-day.is-loading {
+  cursor: default;
+  opacity: 0.5;
 }
 
 /* ── DARK MODE ───────────────────────────────────────────── */
