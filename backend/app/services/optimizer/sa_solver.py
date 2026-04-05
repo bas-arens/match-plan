@@ -130,7 +130,7 @@ class SAScheduler:
                 if preferred_ids and fid not in preferred_ids:
                     cost += self.FIELD_PREF_PENALTY
 
-        # Pairwise constraints
+        # Team conflict (pairwise)
         for i in range(len(items)):
             mid1, fid1, s1, m1 = items[i]
             e1 = s1 + m1["duration"]
@@ -139,21 +139,25 @@ class SAScheduler:
                 mid2, fid2, s2, m2 = items[j]
                 e2 = s2 + m2["duration"]
 
-                overlapping = s1 < e2 and s2 < e1
-
-                if not overlapping:
+                if not (s1 < e2 and s2 < e1):
                     continue
 
-                # Team conflict
                 if (m1["home"] in (m2["home"], m2["away"]) or
                         m1["away"] in (m2["home"], m2["away"])):
                     cost += self.TEAM_OVERLAP_PENALTY
 
-                # Field capacity conflict (match vs match)
-                if fid1 == fid2:
-                    excess = m1["field_size"] + m2["field_size"] - 1.0
-                    if excess > 1e-6:
-                        cost += self.FIELD_CAPACITY_PENALTY * excess
+        # Field capacity (per time slot — catches multi-match overflows pairwise misses)
+        for t in self.time_slots:
+            t_min = to_min(t)
+            by_field = {}
+            for mid, fid, start, match in items:
+                end = start + match["duration"]
+                if start <= t_min < end:
+                    by_field[fid] = by_field.get(fid, 0.0) + match["field_size"]
+            for fid, total in by_field.items():
+                excess = total - 1.0
+                if excess > 1e-6:
+                    cost += self.FIELD_CAPACITY_PENALTY * excess
 
         # Warm-up capacity conflicts (warm-up vs match and warm-up vs warm-up)
         for i in range(len(items)):
