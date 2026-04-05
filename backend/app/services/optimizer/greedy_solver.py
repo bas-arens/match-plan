@@ -85,8 +85,9 @@ class GreedyScheduler:
 
     def _generate_time_slots(self):
         slots = []
-        start = datetime(2025, 1, 1, 8, 0)
-        for i in range(int(12 * 60 / self.slot_size)):
+        start = datetime(2025, 1, 1, 8, 30)
+        n_slots = (20 * 60 - (8 * 60 + 30)) // self.slot_size  # 8:30 → 20:00
+        for i in range(n_slots):
             t = start + timedelta(minutes=i * self.slot_size)
             slots.append(t.strftime("%H:%M"))
         return slots
@@ -200,11 +201,12 @@ class GreedyScheduler:
         ws = to_min(match["preferred"]["start"])
         we = to_min(match["preferred"]["end"])
 
+        end_min = start_min + match["duration"]
         if start_min < ws:
             window_penalty = ws - start_min
             earliness = 0
-        elif start_min > we:
-            window_penalty = start_min - we
+        elif end_min > we:
+            window_penalty = end_min - we
             earliness = 0
         else:
             window_penalty = 0
@@ -313,7 +315,7 @@ class GreedyScheduler:
             field     = next(f for f in self.fields if f["id"] == field_id)
             lockers   = self._assign_lockers(start_min, match["duration"], match)
 
-            _, __, window_penalty = score_tuple
+            _, __, window_penalty, _earliness = score_tuple
             total_penalty += lockers["locker_penalty"] + window_penalty
 
             locker_note = ""

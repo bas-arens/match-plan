@@ -96,8 +96,9 @@ class SAScheduler:
 
     def _generate_time_slots(self):
         slots = []
-        start = datetime(2025, 1, 1, 8, 0)
-        for i in range(int(12 * 60 / self.slot_size)):
+        start = datetime(2025, 1, 1, 8, 30)
+        n_slots = (20 * 60 - (8 * 60 + 30)) // self.slot_size  # 8:30 → 20:00
+        for i in range(n_slots):
             t = start + timedelta(minutes=i * self.slot_size)
             slots.append(t.strftime("%H:%M"))
         return slots
@@ -118,10 +119,11 @@ class SAScheduler:
             # Time window penalty + earliness preference
             ws = to_min(match["preferred"]["start"])
             we = to_min(match["preferred"]["end"])
+            end = start + match["duration"]
             if start < ws:
                 cost += (ws - start) * self.WINDOW_PENALTY_PER_MIN
-            elif start > we:
-                cost += (start - we) * self.WINDOW_PENALTY_PER_MIN
+            elif end > we:
+                cost += (end - we) * self.WINDOW_PENALTY_PER_MIN
             else:
                 cost += (start - ws) * self.EARLY_PREF_PER_MIN
 
