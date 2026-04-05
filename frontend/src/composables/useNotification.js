@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/composables/useNotification.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Global notification queue used to display toast messages.
 //          The notifications array is module-level so all components share
 //          the same queue — only one Toast component is needed in App.vue.

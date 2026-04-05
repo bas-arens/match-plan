@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/services/optimizer.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Triggers the backend match-planning optimizer for a given date.
 //
 // Exports:

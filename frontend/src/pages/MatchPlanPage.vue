@@ -125,7 +125,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/pages/MatchPlanPage.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Displays the generated match planning result — a Gantt chart for
 //          visual scheduling and a locker-room assignment table.
 //          Also provides a download button (CSV / Excel / PNG / PDF).

@@ -33,7 +33,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/pages/HomePage.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Main landing page — shows the calendar and match list side-by-side.
 //          Lets the user pick a date and trigger the planning optimizer.
 //

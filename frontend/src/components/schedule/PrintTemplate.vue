@@ -62,7 +62,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/schedule/PrintTemplate.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Off-screen print/export template rendered by html2canvas when the
 //          user downloads PNG or PDF. Uses only system fonts (Helvetica Neue,
 //          Arial, Courier New) to avoid html2canvas web-font clipping issues.

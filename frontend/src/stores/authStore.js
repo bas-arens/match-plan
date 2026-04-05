@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/stores/authStore.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Reactive store for the authenticated user's session.
 //          Persisted to localStorage so the session survives a page refresh.
 //

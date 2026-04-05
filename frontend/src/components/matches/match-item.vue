@@ -68,7 +68,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/matches/match-item.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Single match card showing home vs away team with logos and kick-off
 //          time. Clicking the card expands an info panel with locker room
 //          assignments, competition details, and referee.

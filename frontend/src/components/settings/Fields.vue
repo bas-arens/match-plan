@@ -53,7 +53,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/settings/Fields.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Settings panel for managing football fields — name, grass type.
 //          Changes are auto-saved via a debounced save (600 ms).
 //          New field IDs are generated with crypto.randomUUID().

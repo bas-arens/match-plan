@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/services/settings.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: API calls for club-specific configuration stored in the backend.
 //          All functions use apiFetch, which handles auth headers and throws
 //          on HTTP errors.

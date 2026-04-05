@@ -139,7 +139,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/settings/TeamPreferences.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Settings table for per-team planning preferences — time windows
 //          (via drag slider), preferred fields, preferred locker rooms, and
 //          surfaces to avoid. Teams are grouped by Sportlink category.

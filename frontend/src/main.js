@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/main.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Application entry point — mounts the Vue app and registers
 //          global error handlers so unhandled API/runtime errors show a toast.
 // ─────────────────────────────────────────────────────────────────────────────

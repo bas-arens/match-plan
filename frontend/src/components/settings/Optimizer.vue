@@ -47,7 +47,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/settings/Optimizer.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Algorithm selection panel — shows clickable cards for Greedy,
 //          Simulated Annealing, and MILP with plain-language descriptions
 //          using football analogies. Selection is auto-saved.

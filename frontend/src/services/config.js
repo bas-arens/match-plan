@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/services/config.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Central API configuration and authenticated fetch wrapper.
 //          All service files import from here so the base URL and auth header
 //          logic live in exactly one place.

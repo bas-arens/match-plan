@@ -12,7 +12,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/calendar/match-count.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Displays the number of matches on the selected date as a large
 //          bold number with a muted label. Shown below the Plan Matchday button.
 //

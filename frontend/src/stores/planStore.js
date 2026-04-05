@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/stores/planStore.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Reactive store for the most recently generated match planning result.
 //          Persisted to sessionStorage so a hard-refresh on /matchplan does not
 //          lose the planning. Cleared automatically when the browser tab closes.

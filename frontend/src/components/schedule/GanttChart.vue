@@ -153,7 +153,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/schedule/GanttChart.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Interactive Gantt chart for visualising and manually adjusting the
 //          generated match planning. Supports drag-and-drop to move matches
 //          between fields and time slots, with real-time penalty recalculation.

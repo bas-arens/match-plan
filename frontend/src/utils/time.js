@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/utils/time.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Shared time conversion utilities used by GanttChart and
 //          TeamPreferences to avoid duplicate implementations.
 //

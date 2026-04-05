@@ -38,7 +38,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/pages/SettingsPage.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Settings page with three tabs:
 //            • Velden & Kleedkamers  — field and locker room configuration
 //            • Tijdvensters & Voorkeuren — team time-window and preference config

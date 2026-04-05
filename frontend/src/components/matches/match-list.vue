@@ -31,7 +31,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/matches/match-list.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Renders the list of matches for the selected date using MatchItem.
 //          Shows a placeholder message when no matches are available.
 //

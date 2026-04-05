@@ -43,7 +43,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/settings/Lockerrooms.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Settings panel for managing locker rooms — name only.
 //          Changes are auto-saved via a debounced save (600 ms).
 //          New locker IDs are generated with crypto.randomUUID().

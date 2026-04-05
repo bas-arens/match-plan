@@ -16,7 +16,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/pages/NotFoundPage.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Catch-all 404 page rendered for any route that does not match a
 //          defined path. Provides a link back to the calendar.
 // ─────────────────────────────────────────────────────────────────────────────

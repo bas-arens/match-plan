@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/utils/autosave.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Debounced auto-save helper. Prevents flooding the backend with a
 //          save request on every keystroke or checkbox toggle.
 //          Each unique key gets its own independent timer.

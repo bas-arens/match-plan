@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/router/index.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Vue Router configuration — defines all application routes and
 //          the navigation guard that enforces authentication.
 //

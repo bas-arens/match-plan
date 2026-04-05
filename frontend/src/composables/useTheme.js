@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/composables/useTheme.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Composable that manages the dark / light theme toggle.
 //          The chosen theme is stored in localStorage and applied immediately
 //          on import by adding or removing the "dark" class on <html>.

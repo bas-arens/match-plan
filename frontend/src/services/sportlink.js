@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/services/sportlink.js
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: API calls to the Sportlink proxy endpoints on the backend.
 //          Sportlink is the Dutch sports administration platform that provides
 //          match schedules, team data, and club information.

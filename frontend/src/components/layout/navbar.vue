@@ -1,7 +1,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/layout/navbar.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Top navigation bar — club logo, page links, dark/light theme toggle,
 //          and a logout button shown when the user has an active session.
 //

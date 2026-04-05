@@ -49,7 +49,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/common/TimeRangeSlider.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Dual-handle range slider for selecting a time window in minutes.
 //          Supports both mouse and touch events. Used in TeamPreferences to
 //          set per-team earliest/latest start times.

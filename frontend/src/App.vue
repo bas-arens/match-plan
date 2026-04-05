@@ -9,7 +9,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/App.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Root application component. Renders the navbar (hidden on /login),
 //          the current route view, and the global Toast notification overlay.
 // ─────────────────────────────────────────────────────────────────────────────

@@ -21,7 +21,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/layout/main-layout.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Two-column page layout used by the calendar / home page.
 //          Left panel (gray background) for the match list, right panel
 //          (white) for the calendar and controls.

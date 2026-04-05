@@ -52,7 +52,7 @@
 <script setup>
 // ─────────────────────────────────────────────────────────────────────────────
 // File:    src/components/calendar/calendar.vue
-// Author:  MatchPlan
+// Author:  Bas Arens
 // Purpose: Custom calendar grid component (Monday-first, Dutch locale).
 //          Fetches home-match dates on mount and highlights them with a green
 //          dot. Selecting a day loads the matches for that day via the API.
