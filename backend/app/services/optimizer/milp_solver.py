@@ -178,12 +178,36 @@ class MILPScheduler:
                 self.problem += t1 + m1["duration"] <= t2 + M * (1 - z)
                 self.problem += t2 + m2["duration"] <= t1 + M * z
 
-        # ----- Objective: window + earliness + field pref + locker pressure -----
+        # ----- C4: Locker capacity per time slot -----
+        # Each match needs 2 lockers during [start - buffer, start + duration + buffer].
+        # At any moment, total locker demand must not exceed available lockers.
+        num_lockers = len(self.lockers)
+        LK_BUF = self.LOCKER_BUFFER
+        for s in self.time_slots:
+            s_min = to_minutes(s)
+            demand = []
+            for m in self.matches:
+                mid = m["id"]
+                dur = m["duration"]
+                for t in self._valid_slots(m):
+                    t_min = to_minutes(t)
+                    lk_start = t_min - LK_BUF
+                    lk_end   = t_min + dur + LK_BUF
+                    if lk_start <= s_min < lk_end:
+                        # Each match needs 2 lockers (home + away), sum over all fields
+                        for f in self.fields:
+                            fid = str(f["id"])
+                            key = (mid, fid, t)
+                            if key in self.x:
+                                demand.append(2 * self.x[key])
+            if demand:
+                self.problem += lpSum(demand) <= num_lockers
+
+        # ----- Objective: window + earliness + field preference -----
         terms = []
         W_PENALTY = 1     # per minute outside window (matches SA + frontend)
         E_PENALTY = 0.5   # per minute late within window (prefer early start)
         F_PENALTY = 30    # per match on non-preferred field (matches SA + frontend)
-        L_PENALTY = 8     # per overlapping locker-window pair (matches SA)
 
         for m in self.matches:
             mid = m["id"]
@@ -211,38 +235,6 @@ class MILPScheduler:
                 # Field preference penalty
                 if preferred_ids and fid not in preferred_ids:
                     terms.append(F_PENALTY * v)
-
-        # ----- Locker pressure: penalize overlapping locker windows -----
-        # For each match pair, if their locker windows overlap, the greedy
-        # locker assignment is more likely to force sharing. We model this
-        # with indicator variables: o_ij = 1 when locker windows overlap.
-        LK_BUF = self.LOCKER_BUFFER
-        for i in range(len(self.matches)):
-            for j in range(i + 1, len(self.matches)):
-                m1 = self.matches[i]
-                m2 = self.matches[j]
-                mid1, mid2 = m1["id"], m2["id"]
-
-                # Locker window = [start - LK_BUF, start + duration + LK_BUF]
-                # They DON'T overlap if m1's locker ends before m2's starts or vice versa:
-                #   s1 + dur1 + 2*LK_BUF <= s2   OR   s2 + dur2 + 2*LK_BUF <= s1
-                # p=1 means m1 locker finishes first, q=1 means m2 finishes first
-                # If neither, they overlap → o >= 1 - p - q
-                p = LpVariable(f"lp_{mid1}_{mid2}", cat=LpBinary)
-                q = LpVariable(f"lq_{mid1}_{mid2}", cat=LpBinary)
-                o = LpVariable(f"lo_{mid1}_{mid2}", cat=LpBinary)
-
-                s1 = start_expr(mid1)
-                s2 = start_expr(mid2)
-
-                gap1 = m1["duration"] + 2 * LK_BUF
-                gap2 = m2["duration"] + 2 * LK_BUF
-
-                self.problem += s1 + gap1 <= s2 + M * (1 - p)
-                self.problem += s2 + gap2 <= s1 + M * (1 - q)
-                self.problem += o >= 1 - p - q
-
-                terms.append(L_PENALTY * o)
 
         self.problem += lpSum(terms)
 
