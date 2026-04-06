@@ -334,15 +334,20 @@ class MILPScheduler:
             if var.value() and var.value() > 0.5:
                 assigned.append((mid, fid, t))
 
-        # Sort by start time, build full schedule with locker assignment
         assigned.sort(key=lambda x: to_minutes(x[2]))
-        placed = []
 
+        # ── Phase 2: optimal locker assignment via small MILP ──
+        locker_map = self._solve_lockers(assigned)
+
+        placed = []
         for mid, fid, t in assigned:
             match = next(m for m in self.matches if m["id"] == mid)
             field = self.field_by_id.get(int(fid)) if fid.isdigit() else self.field_by_id.get(fid)
             start_min = to_minutes(t)
-            lockers = self._assign_lockers(start_min, match["duration"], placed, match)
+            lk_start  = start_min - self.LOCKER_BUFFER
+            lk_end    = start_min + match["duration"] + self.LOCKER_BUFFER
+
+            home_lk, away_lk, penalty = locker_map.get(mid, (self.lockers[0]["id"], self.lockers[1]["id"], 0))
 
             entry = {
                 "match_id":        mid,
@@ -355,12 +360,135 @@ class MILPScheduler:
                 "field_size":      match["field_size"],
                 "warmup_size":     self._warmup_size(match),
                 "warmup_duration": self.WARMUP_DURATION,
-                "home_locker":     lockers["home_locker"],
-                "away_locker":     lockers["away_locker"],
-                "locker_start":    lockers["locker_start"],
-                "locker_duration": lockers["locker_duration"],
-                "penalty":         lockers["locker_penalty"],
+                "home_locker":     home_lk,
+                "away_locker":     away_lk,
+                "locker_start":    lk_start,
+                "locker_duration": lk_end - lk_start,
+                "penalty":         penalty,
             }
             placed.append(entry)
 
         return placed
+
+    # ------------------------------------------------------
+    def _solve_lockers(self, assigned):
+        """
+        Phase 2 MILP: with field+time fixed, optimally assign lockers.
+        Returns {match_id: (home_locker_id, away_locker_id, penalty)}.
+        """
+        if not self.lockers or len(self.lockers) < 2:
+            return {}
+
+        print("Phase 2: optimizing locker assignment...")
+
+        prob = LpProblem("MatchPlan_Lockers", LpMinimize)
+        locker_ids = [lk["id"] for lk in self.lockers]
+        LK_BUF = self.LOCKER_BUFFER
+        p = self.priorities
+
+        # Build match info with fixed times
+        match_info = []
+        for mid, fid, t in assigned:
+            match = next(m for m in self.matches if m["id"] == mid)
+            start = to_minutes(t)
+            match_info.append({
+                "mid": mid, "home": match["home"],
+                "start": start, "duration": match["duration"],
+                "lk_start": start - LK_BUF,
+                "lk_end": start + match["duration"] + LK_BUF,
+            })
+
+        # Variables: yh[(mid, lid)] = home uses locker, ya[(mid, lid)] = away uses locker
+        yh = {}
+        ya = {}
+        for mi in match_info:
+            mid = mi["mid"]
+            for lid in locker_ids:
+                yh[(mid, lid)] = LpVariable(f"yh_{mid}_{lid}", cat=LpBinary)
+                ya[(mid, lid)] = LpVariable(f"ya_{mid}_{lid}", cat=LpBinary)
+
+        # C1: each match gets exactly 1 home locker and 1 away locker
+        for mi in match_info:
+            mid = mi["mid"]
+            prob += lpSum(yh[(mid, lid)] for lid in locker_ids) == 1
+            prob += lpSum(ya[(mid, lid)] for lid in locker_ids) == 1
+
+        # C2: home and away locker must be different
+        for mi in match_info:
+            mid = mi["mid"]
+            for lid in locker_ids:
+                prob += yh[(mid, lid)] + ya[(mid, lid)] <= 1
+
+        # C3: no two matches share a locker when their locker windows overlap
+        for i in range(len(match_info)):
+            for j in range(i + 1, len(match_info)):
+                mi, mj = match_info[i], match_info[j]
+                # Check if locker windows overlap
+                if mi["lk_start"] < mj["lk_end"] and mj["lk_start"] < mi["lk_end"]:
+                    for lid in locker_ids:
+                        prob += (yh[(mi["mid"], lid)] + ya[(mi["mid"], lid)]
+                               + yh[(mj["mid"], lid)] + ya[(mj["mid"], lid)]) <= 1
+
+        # C4: fixed locker assignments
+        for mi in match_info:
+            fix = self.fixed_by_team.get(mi["home"])
+            if fix and fix.get("locker_id") is not None:
+                forced_lid = fix["locker_id"]
+                if forced_lid in locker_ids:
+                    prob += yh[(mi["mid"], forced_lid)] == 1
+
+        # Objective: minimize sharing penalty using slack variables
+        # If C3 can't be fully satisfied (more matches than lockers allow),
+        # we use slack. But also add preferred locker bonus.
+        #
+        # For now the hard constraints should suffice — if infeasible,
+        # fall back to greedy. Add preferred locker soft preference:
+        terms = []
+        for mi in match_info:
+            mid = mi["mid"]
+            pref = self.pref_by_team.get(mi["home"])
+            preferred_ids = pref.get("preferred_locker_ids", []) if pref else []
+            if preferred_ids:
+                for lid in locker_ids:
+                    if lid not in preferred_ids:
+                        terms.append(30 * p["lockers"] * yh[(mid, lid)])
+
+        prob += lpSum(terms) if terms else 0
+
+        solver = PULP_CBC_CMD(msg=False, timeLimit=5)
+        prob.solve(solver)
+
+        n_vars = len(yh) + len(ya)
+        print(f"  Locker MILP: {n_vars} variables, status={'Optimal' if prob.status == 1 else 'Fallback'}")
+
+        if prob.status != 1:
+            # Fallback to greedy
+            print("  Locker MILP infeasible — falling back to greedy")
+            return self._greedy_locker_fallback(assigned)
+
+        # Extract assignments
+        result = {}
+        for mi in match_info:
+            mid = mi["mid"]
+            home_lid = next(lid for lid in locker_ids if yh[(mid, lid)].value() > 0.5)
+            away_lid = next(lid for lid in locker_ids if ya[(mid, lid)].value() > 0.5)
+            result[mid] = (home_lid, away_lid, 0)
+
+        return result
+
+    def _greedy_locker_fallback(self, assigned):
+        """Fallback: assign lockers greedily when Phase 2 MILP is infeasible."""
+        placed = []
+        result = {}
+        for mid, fid, t in assigned:
+            match = next(m for m in self.matches if m["id"] == mid)
+            start_min = to_minutes(t)
+            lockers = self._assign_lockers(start_min, match["duration"], placed, match)
+            result[mid] = (lockers["home_locker"], lockers["away_locker"], lockers["locker_penalty"])
+            placed.append({
+                "home_locker": lockers["home_locker"],
+                "away_locker": lockers["away_locker"],
+                "locker_start": lockers["locker_start"],
+                "locker_duration": lockers["locker_duration"],
+            })
+        return result
