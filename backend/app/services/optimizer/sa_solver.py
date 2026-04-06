@@ -33,7 +33,6 @@ class SAScheduler:
     FIELD_PREF_PENALTY      = 30
     LOCKER_BUFFER           = 20
     LOCKER_PENALTY          = 50
-    LOCKER_PREF_PENALTY     = 30
     WARMUP_DURATION         = 15   # minutes of warm-up before match on the same field
 
     # Hard constraint penalties (large, but finite so SA can escape)
@@ -62,7 +61,6 @@ class SAScheduler:
         self.EARLY_PREF_PER_MIN     = 0.5 * self.priorities["time_windows"]
         self.FIELD_PREF_PENALTY     = 30  * self.priorities["field_preference"]
         self.LOCKER_PENALTY         = 50  * self.priorities["lockers"]
-        self.LOCKER_PREF_PENALTY    = 30  * self.priorities["lockers"]
 
         # --- Pre-computed lookups for speed (must be before _normalize_matches) ---
         self.field_by_id = {f["id"]: f for f in self.fields}
@@ -380,10 +378,6 @@ class SAScheduler:
             else:
                 home_lk, away_lk = self.lockers[0], self.lockers[1]
                 penalty  = self.LOCKER_PENALTY * 2
-
-            # Soft penalty if preferred locker was unavailable
-            if preferred_locker_ids and home_lk["id"] not in preferred_locker_ids:
-                penalty += self.LOCKER_PREF_PENALTY
 
             total += penalty
             placed.append({

@@ -10,8 +10,8 @@
 #   GreedyScheduler — __init__, solve()
 #
 # Key constants:
-#   LOCKER_BUFFER, LOCKER_PENALTY, LOCKER_PREF_PENALTY,
-#   FIELD_PREF_PENALTY, SURFACE_AVOID_PENALTY, WARMUP_DURATION
+#   LOCKER_BUFFER, LOCKER_PENALTY, FIELD_PREF_PENALTY,
+#   EARLY_PREF_PER_MIN, WARMUP_DURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
 import re
@@ -29,8 +29,8 @@ class GreedyScheduler:
 
     LOCKER_BUFFER        = 20   # minutes before & after match for locker use
     LOCKER_PENALTY       = 50   # penalty per forced locker share
-    LOCKER_PREF_PENALTY  = 30   # penalty when home team's preferred locker unavailable
     FIELD_PREF_PENALTY   = 30   # penalty per match on non-preferred field
+    EARLY_PREF_PER_MIN   = 0.5  # penalty per minute late within time window
     WARMUP_DURATION      = 15   # minutes of warm-up before match on the same field
 
     DEFAULT_WINDOW = {"start": "08:00", "end": "20:00"}
@@ -45,9 +45,9 @@ class GreedyScheduler:
         self.priorities   = priorities or {"lockers": 1, "time_windows": 1, "field_preference": 1}
 
         # Apply priority multipliers to penalty weights
-        self.LOCKER_PENALTY      = 50 * self.priorities["lockers"]
-        self.LOCKER_PREF_PENALTY = 30 * self.priorities["lockers"]
-        self.FIELD_PREF_PENALTY  = 30 * self.priorities["field_preference"]
+        self.LOCKER_PENALTY      = 50  * self.priorities["lockers"]
+        self.FIELD_PREF_PENALTY  = 30  * self.priorities["field_preference"]
+        self.EARLY_PREF_PER_MIN  = 0.5 * self.priorities["time_windows"]
 
         # Build lookup: team → fixed slot config
         self.fixed_by_team = {fs["team"]: fs for fs in self.fixed_slots}
@@ -283,13 +283,6 @@ class GreedyScheduler:
             away_lk = self.lockers[1]
             penalty += self.LOCKER_PENALTY * 2
 
-        # Soft penalty if home team's preferred locker was unavailable
-        if match:
-            pref = self._get_preference(match["home"])
-            preferred_ids = pref.get("preferred_locker_ids", []) if pref else []
-            if preferred_ids and home_lk["id"] not in preferred_ids:
-                penalty += self.LOCKER_PREF_PENALTY
-
         return {
             "home_locker":     home_lk["id"],
             "away_locker":     away_lk["id"],
@@ -391,8 +384,11 @@ class GreedyScheduler:
             field     = next(f for f in self.fields if f["id"] == field_id)
             lockers   = self._assign_lockers(start_min, match["duration"], match)
 
-            _, __, window_penalty, _earliness = score_tuple
-            total_penalty += lockers["locker_penalty"] + window_penalty
+            field_penalty, _, window_penalty, earliness = score_tuple
+            total_penalty += (lockers["locker_penalty"]
+                              + window_penalty * self.priorities["time_windows"]
+                              + earliness * self.EARLY_PREF_PER_MIN
+                              + field_penalty)
 
             locker_note = ""
             if lockers["locker_penalty"] > 0:
