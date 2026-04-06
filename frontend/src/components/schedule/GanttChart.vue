@@ -210,12 +210,12 @@ const hours       = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 const LOCKER_BUFFER         = 20
 const BASE_LOCKER_PENALTY   = 50
 const BASE_FIELD_PENALTY    = 30
-const BASE_SURFACE_PENALTY  = 40
+const BASE_EARLY_PER_MIN    = 0.5
 const TEAM_OVERLAP_PENALTY  = 500
 
-const LOCKER_PENALTY        = computed(() => BASE_LOCKER_PENALTY  * (props.priorities.lockers ?? 1))
-const FIELD_PREF_PENALTY    = computed(() => BASE_FIELD_PENALTY   * (props.priorities.field_preference ?? 1))
-const SURFACE_AVOID_PENALTY = computed(() => BASE_SURFACE_PENALTY * (props.priorities.field_preference ?? 1))
+const LOCKER_PENALTY        = computed(() => BASE_LOCKER_PENALTY * (props.priorities.lockers ?? 1))
+const FIELD_PREF_PENALTY    = computed(() => BASE_FIELD_PENALTY  * (props.priorities.field_preference ?? 1))
+const EARLY_PREF_PER_MIN    = computed(() => BASE_EARLY_PER_MIN  * (props.priorities.time_windows ?? 1))
 
 const AGE_GROUP_COLORS = {
   'senioren': '#3B82F6',  // blue
@@ -245,10 +245,10 @@ function ageGroup(teamName) {
 
 const PENALTY_COLORS = {
   window:  '#EAB308',
+  early:   '#A3E635',
   locker:  '#F97316',
   overlap: '#EF4444',
   field:   '#8B5CF6',
-  surface: '#06B6D4',
 }
 
 // ─── LOCAL SCHEDULE ──────────────────────────────────────────
@@ -385,6 +385,17 @@ const penalties = computed(() => {
       total += winPts
       items.push({ type: 'window', match_id: m.match_id, points: winPts,
         label: `${m.home}: ${win} min buiten tijdvenster` })
+    } else {
+      // Earliness: prefer starting at the beginning of the time window
+      const earlyMin = m.startMin - ws
+      if (earlyMin > 0) {
+        const earlyPts = Math.round(earlyMin * EARLY_PREF_PER_MIN.value * 10) / 10
+        if (earlyPts > 0) {
+          total += earlyPts
+          items.push({ type: 'early', match_id: m.match_id, points: earlyPts,
+            label: `${m.home}: ${earlyMin} min na vroegst mogelijke start` })
+        }
+      }
     }
 
     const preferredIds = pref.preferred_field_ids ?? []
@@ -392,14 +403,6 @@ const penalties = computed(() => {
       total += FIELD_PREF_PENALTY.value
       items.push({ type: 'field', match_id: m.match_id, points: FIELD_PREF_PENALTY.value,
         label: `${m.home}: niet op voorkeursveld` })
-    }
-
-    const avoidSurfaces = pref.avoid_surfaces ?? []
-    const field = props.allFields.find(f => f.id === m.field_id)
-    if (field && avoidSurfaces.includes(field.surface)) {
-      total += SURFACE_AVOID_PENALTY.value
-      items.push({ type: 'surface', match_id: m.match_id, points: SURFACE_AVOID_PENALTY.value,
-        label: `${m.home}: speelt op vermeden ondergrond (${field.surface})` })
     }
   }
 
