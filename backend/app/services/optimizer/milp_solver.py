@@ -178,10 +178,11 @@ class MILPScheduler:
                 self.problem += t1 + m1["duration"] <= t2 + M * (1 - z)
                 self.problem += t2 + m2["duration"] <= t1 + M * z
 
-        # ----- Objective: minimize window deviation + field preference -----
+        # ----- Objective: window deviation + earliness + field preference -----
         terms = []
-        W_PENALTY = 10   # per minute outside window
-        F_PENALTY = 30   # per match on non-preferred field
+        W_PENALTY = 10    # per minute outside window
+        E_PENALTY = 0.5   # per minute late within window (prefer early start)
+        F_PENALTY = 30    # per match on non-preferred field
 
         for m in self.matches:
             mid = m["id"]
@@ -202,6 +203,9 @@ class MILPScheduler:
                     terms.append((ws - t_min) * W_PENALTY * v)
                 elif t_min + m["duration"] > we:
                     terms.append((t_min + m["duration"] - we) * W_PENALTY * v)
+                else:
+                    # Earliness preference: penalize distance from window start
+                    terms.append((t_min - ws) * E_PENALTY * v)
 
                 # Field preference penalty
                 if preferred_ids and fid not in preferred_ids:
@@ -225,7 +229,8 @@ class MILPScheduler:
         self.problem.solve(solver)
 
         status = self.problem.status
-        print(f"Status: {['Not Solved','Optimal','Infeasible','Unbounded','Undefined'][status + 1]}")
+        status_map = {1: "Optimal", 0: "Not Solved", -1: "Infeasible", -2: "Unbounded", -3: "Undefined"}
+        print(f"Status: {status_map.get(status, 'Unknown')}")
 
         return self._extract_solution()
 
