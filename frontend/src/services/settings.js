@@ -29,3 +29,6 @@ export const saveFields      = fields      => apiFetch(`${BASE}/fields`,      { 
 export const saveLockers     = lockers     => apiFetch(`${BASE}/lockers`,     { method: 'POST', body: JSON.stringify(lockers) })
 export const savePreferences = preferences => apiFetch(`${BASE}/preferences`, { method: 'POST', body: JSON.stringify(preferences) })
 export const saveOptimizer   = settings    => apiFetch(`${BASE}/optimizer`,   { method: 'POST', body: JSON.stringify(settings) })
+
+export const getFixedSlots   = ()          => apiFetch(`${BASE}/fixed-slots`)
+export const saveFixedSlots  = slots       => apiFetch(`${BASE}/fixed-slots`, { method: 'POST', body: JSON.stringify(slots) })

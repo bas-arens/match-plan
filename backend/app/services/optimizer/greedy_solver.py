@@ -35,12 +35,16 @@ class GreedyScheduler:
 
     DEFAULT_WINDOW = {"start": "08:00", "end": "20:00"}
 
-    def __init__(self, matches, fields, lockers, preferences=None, slot_size=15):
+    def __init__(self, matches, fields, lockers, preferences=None, slot_size=15, fixed_slots=None):
         self.raw_matches  = matches
         self.fields       = fields
         self.lockers      = lockers
         self.preferences  = preferences or []
         self.slot_size    = slot_size
+        self.fixed_slots  = fixed_slots or []
+
+        # Build lookup: team → fixed slot config
+        self.fixed_by_team = {fs["team"]: fs for fs in self.fixed_slots}
 
         self.matches    = self._normalize_matches()
         self.time_slots = self._generate_time_slots()
@@ -229,7 +233,7 @@ class GreedyScheduler:
     # LOCKER ASSIGNMENT
     # ------------------------------------------------------------------
 
-    def _assign_lockers(self, start_min, duration, match=None):
+    def _assign_lockers(self, start_min, duration, match=None, force_home_locker=None):
         end_min         = start_min + duration
         locker_start    = start_min - self.LOCKER_BUFFER
         locker_end      = end_min   + self.LOCKER_BUFFER
@@ -237,6 +241,21 @@ class GreedyScheduler:
 
         free    = self._free_lockers(start_min, end_min)
         penalty = 0
+
+        # Fixed locker assignment overrides preference logic
+        if force_home_locker is not None:
+            home_lk = next((lk for lk in self.lockers if lk["id"] == force_home_locker), None)
+            if not home_lk:
+                home_lk = self.lockers[0]
+            remaining = [lk for lk in free if lk["id"] != home_lk["id"]]
+            away_lk = remaining[0] if remaining else next(lk for lk in self.lockers if lk["id"] != home_lk["id"])
+            return {
+                "home_locker":     home_lk["id"],
+                "away_locker":     away_lk["id"],
+                "locker_start":    locker_start,
+                "locker_duration": locker_duration,
+                "locker_penalty":  0,
+            }
 
         # Sort free lockers so preferred ones come first
         if match:
@@ -294,7 +313,58 @@ class GreedyScheduler:
 
         total_penalty = 0
 
+        # --- Phase 1: pre-place fixed-slot matches ---
+        fixed_ids = set()
         for match in sorted_matches:
+            fix = self.fixed_by_team.get(match["home"])
+            if not fix:
+                continue
+
+            fixed_time     = fix.get("time")
+            fixed_field_id = fix.get("field_id")
+            fixed_locker   = fix.get("locker_id")
+
+            if not fixed_time or not fixed_field_id:
+                continue  # need at least time + field to pre-place
+
+            start_min = to_min(fixed_time)
+            field     = next((f for f in self.fields if f["id"] == fixed_field_id), None)
+            if not field:
+                continue
+
+            lockers = self._assign_lockers(start_min, match["duration"], match,
+                                           force_home_locker=fixed_locker)
+
+            h, m = divmod(start_min, 60)
+            time_slot = f"{h:02d}:{m:02d}"
+
+            print(f"  📌 {match['id']:<10} {match['home'][:19]:<20} "
+                  f"→ {field['name']:<12} {time_slot}  (FIXED)")
+
+            self.schedule.append({
+                "match_id":        match["id"],
+                "home":            match["home"],
+                "away":            match["away"],
+                "field_id":        fixed_field_id,
+                "field_name":      field["name"],
+                "time":            time_slot,
+                "duration":        match["duration"],
+                "field_size":      match["field_size"],
+                "warmup_size":     self._warmup_size(match),
+                "warmup_duration": self.WARMUP_DURATION,
+                "home_locker":     lockers["home_locker"],
+                "away_locker":     lockers["away_locker"],
+                "locker_start":    lockers["locker_start"],
+                "locker_duration": lockers["locker_duration"],
+                "penalty":         lockers["locker_penalty"],
+            })
+            fixed_ids.add(match["id"])
+
+        # --- Phase 2: schedule remaining matches ---
+        for match in sorted_matches:
+            if match["id"] in fixed_ids:
+                continue
+
             best = None  # (score_tuple, field_id, time_str)
 
             for t in self.time_slots:

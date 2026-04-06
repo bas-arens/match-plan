@@ -27,6 +27,11 @@
       <TeamPreferences />
     </div>
 
+    <!-- TAB: VASTE SLOTS -->
+    <div v-if="activeTab === 'fixed'">
+      <FixedSlots />
+    </div>
+
     <!-- TAB: OPTIMIZER -->
     <div v-if="activeTab === 'optimizer'">
       <OptimizerSettings />
@@ -48,6 +53,7 @@ import { ref } from 'vue'
 import FieldsSettings     from '@/components/settings/Fields.vue'
 import LockerRoomSettings from '@/components/settings/Lockerrooms.vue'
 import TeamPreferences    from '@/components/settings/TeamPreferences.vue'
+import FixedSlots         from '@/components/settings/FixedSlots.vue'
 import OptimizerSettings  from '@/components/settings/Optimizer.vue'
 
 const activeTab = ref('resources')
@@ -55,6 +61,7 @@ const activeTab = ref('resources')
 const tabs = [
   { id: 'resources', label: 'Velden & Kleedkamers' },
   { id: 'windows',   label: 'Tijdvensters & Voorkeuren' },
+  { id: 'fixed',     label: 'Vaste Slots' },
   { id: 'optimizer', label: 'Optimizer' },
 ]
 </script>

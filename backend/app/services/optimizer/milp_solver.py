@@ -57,11 +57,12 @@ def infer_duration(team_name):
 
 class MILPScheduler:
 
-    def __init__(self, matches, fields, lockers, windows=None, date=None):
+    def __init__(self, matches, fields, lockers, windows=None, date=None, fixed_slots=None):
         self.raw_matches = matches
         self.fields = fields
         self.lockers = lockers
         self.windows = windows or []
+        self.fixed_slots = fixed_slots or []
 
         self.buffer_pre = 45
         self.buffer_post = 45
@@ -70,6 +71,9 @@ class MILPScheduler:
 
         self.matches = self._normalize_matches()
         self.time_slots = self._generate_time_slots()
+
+        # Build fixed slot lookup
+        self.fixed_by_team = {fs["team"]: fs for fs in self.fixed_slots}
 
         self.problem = LpProblem("MatchPlanInterval_MILP", LpMinimize)
 
@@ -148,6 +152,41 @@ class MILPScheduler:
                     self.z_lock[(m1, m2, lid)] = LpVariable(
                         f"z_lock_{m1}_{m2}_{lid}", cat=LpBinary
                     )
+
+        # -----------------------------
+        # C0: fix variables for fixed-slot matches
+        # -----------------------------
+        for m in self.matches:
+            fix = self.fixed_by_team.get(m["home"])
+            if not fix:
+                continue
+            mid = m["id"]
+            fixed_time = fix.get("time")
+            fixed_field = fix.get("field_id")
+            fixed_locker = fix.get("locker_id")
+
+            # Pin time + field
+            if fixed_time and fixed_field:
+                fid = str(fixed_field)
+                for f in self.fields:
+                    for t in self.time_slots:
+                        key = (mid, str(f["id"]), t)
+                        if key in self.x:
+                            if str(f["id"]) == fid and t == fixed_time:
+                                self.problem += self.x[key] == 1
+                            else:
+                                self.problem += self.x[key] == 0
+
+            # Pin home locker
+            if fixed_locker is not None:
+                lid = str(fixed_locker)
+                for l in self.lockers:
+                    key = (mid, "home", str(l["id"]))
+                    if key in self.y:
+                        if str(l["id"]) == lid:
+                            self.problem += self.y[key] == 1
+                        else:
+                            self.problem += self.y[key] == 0
 
         # -----------------------------
         # C1: each match exactly once

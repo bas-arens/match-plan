@@ -120,3 +120,24 @@ def get_optimizer():
 def save_optimizer(opt: OptimizerSettings):
     save_json("optimizer", opt.dict())
     return {"status": "saved"}
+
+
+# -------------------------
+# Fixed Slots
+# -------------------------
+class FixedSlot(BaseModel):
+    team: str
+    time: str | None = None
+    field_id: int | None = None
+    locker_id: int | None = None
+
+
+@router.get("/fixed-slots")
+def get_fixed_slots():
+    return load_json("fixed_slots", default=[])
+
+
+@router.post("/fixed-slots")
+def save_fixed_slots(slots: list[FixedSlot]):
+    save_json("fixed_slots", [s.dict() for s in slots])
+    return {"status": "saved"}

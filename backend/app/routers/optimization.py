@@ -10,6 +10,8 @@
 #                             the resulting schedule
 # ─────────────────────────────────────────────────────────────────────────────
 
+import time
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -73,6 +75,7 @@ async def run_optimizer(req: RunRequest):
     fields      = settings["fields"]
     lockers     = settings["lockers"]
     preferences = settings["preferences"]
+    fixed_slots = settings.get("fixed_slots", [])
     opt_conf    = settings["optimizer"]  # contains: { "algorithm": "greedy" }
 
     # Fetch matches
@@ -87,25 +90,30 @@ async def run_optimizer(req: RunRequest):
 
     algo = opt_conf.get("algorithm", "greedy").lower()
 
+    t0 = time.perf_counter()
+
     if algo == "greedy":
-        solver = GreedyScheduler(matches, fields, lockers, preferences)
+        solver = GreedyScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots)
         result = solver.solve()
 
     elif algo == "sa":
-        solver = SAScheduler(matches, fields, lockers, preferences)
+        solver = SAScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots)
         result = solver.solve()
 
     elif algo == "milp":
-        solver = MILPScheduler(matches, fields, lockers, preferences, date)
+        solver = MILPScheduler(matches, fields, lockers, preferences, date, fixed_slots=fixed_slots)
         solver.build()
         result = solver.solve()
 
     else:
         raise HTTPException(400, f"Unknown algorithm '{algo}'")
 
+    elapsed_ms = round((time.perf_counter() - t0) * 1000)
+
     return {
         "status": "ok",
         "algorithm": algo,
         "date": date,
+        "elapsed_ms": elapsed_ms,
         "scheduled": result
     }

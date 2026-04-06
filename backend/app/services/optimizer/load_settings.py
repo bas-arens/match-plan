@@ -29,6 +29,12 @@ def load_preferences():
 def load_optimizer():
     return json.loads((SETTINGS_DIR / "optimizer.json").read_text())
 
+def load_fixed_slots():
+    path = SETTINGS_DIR / "fixed_slots.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text())
+
 def load_all_settings():
     """Convenience function to load all saved settings"""
     return {
@@ -36,4 +42,5 @@ def load_all_settings():
         "lockers": load_lockers(),
         "preferences": load_preferences(),
         "optimizer": load_optimizer(),
+        "fixed_slots": load_fixed_slots(),
     }

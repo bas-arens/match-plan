@@ -41,22 +41,46 @@ class SAScheduler:
     FIELD_CAPACITY_PENALTY  = 500
 
     # Annealing schedule
-    T_INIT       = 300.0
-    T_MIN        = 0.5
-    COOLING      = 0.995
-    ITER_PER_T   = 40
+    T_INIT       = 500.0
+    T_MIN        = 0.3
+    COOLING      = 0.998
+    ITER_PER_T   = 60
 
     DEFAULT_WINDOW = {"start": "08:00", "end": "20:00"}
 
-    def __init__(self, matches, fields, lockers, preferences=None, slot_size=15):
+    def __init__(self, matches, fields, lockers, preferences=None, slot_size=15, fixed_slots=None):
         self.raw_matches  = matches
         self.fields       = fields
         self.lockers      = lockers
         self.preferences  = preferences or []
         self.slot_size    = slot_size
+        self.fixed_slots  = fixed_slots or []
+
+        # --- Pre-computed lookups for speed (must be before _normalize_matches) ---
+        self.field_by_id = {f["id"]: f for f in self.fields}
+        self.pref_by_team = {p["team"]: p for p in self.preferences}
+        self.fixed_by_team = {fs["team"]: fs for fs in self.fixed_slots}
 
         self.matches    = self._normalize_matches()
         self.time_slots = self._generate_time_slots()
+
+        self.match_by_id = {m["id"]: m for m in self.matches}
+
+        # Pre-compute which match pairs share a team (only these need overlap checks)
+        self.conflict_pairs = []
+        for i in range(len(self.matches)):
+            for j in range(i + 1, len(self.matches)):
+                m1 = self.matches[i]
+                m2 = self.matches[j]
+                if (m1["home"] in (m2["home"], m2["away"]) or
+                        m1["away"] in (m2["home"], m2["away"])):
+                    self.conflict_pairs.append((m1["id"], m2["id"]))
+
+        # Number of locker slots (each match needs 2: home + away)
+        self.num_lockers = len(self.lockers)
+
+        # Pre-compute time slot minutes
+        self.time_slot_mins = [to_min(t) for t in self.time_slots]
 
     # ------------------------------------------------------------------
     # NORMALISATION  (same as greedy)
@@ -72,7 +96,7 @@ class SAScheduler:
         return 0.125 if ("JO" in team or "MO" in team) else 0.25
 
     def _get_preference(self, team):
-        return next((p for p in self.preferences if p["team"] == team), None)
+        return self.pref_by_team.get(team)
 
     def _get_window(self, team):
         p = self._get_preference(team)
@@ -90,6 +114,7 @@ class SAScheduler:
                 "away":       m["uitteam"],
                 "duration":   infer_duration(home),
                 "field_size": infer_field_size(home),
+                "age":        self._infer_age(home),
                 "preferred":  self._get_window(home),
             })
         return out
@@ -104,116 +129,221 @@ class SAScheduler:
         return slots
 
     # ------------------------------------------------------------------
-    # COST FUNCTION
-    # assignment: {match_id -> (field_id, time_str)}
+    # PER-MATCH COST  (independent penalties for a single match)
     # ------------------------------------------------------------------
 
-    def _cost(self, assignment):
-        cost = 0
-        items = [(mid, fid, to_min(t), next(m for m in self.matches if m["id"] == mid))
-                 for mid, (fid, t) in assignment.items()]
+    def _match_cost(self, mid, fid, start):
+        """Cost contributions that depend only on this match's placement."""
+        match = self.match_by_id[mid]
+        end = start + match["duration"]
+        cost = 0.0
 
-        for mid, fid, start, match in items:
-            end = start + match["duration"]
+        # Time window penalty + earliness preference
+        ws = to_min(match["preferred"]["start"])
+        we = to_min(match["preferred"]["end"])
+        if start < ws:
+            cost += (ws - start) * self.WINDOW_PENALTY_PER_MIN
+        elif end > we:
+            cost += (end - we) * self.WINDOW_PENALTY_PER_MIN
+        else:
+            cost += (start - ws) * self.EARLY_PREF_PER_MIN
 
-            # Time window penalty + earliness preference
-            ws = to_min(match["preferred"]["start"])
-            we = to_min(match["preferred"]["end"])
-            end = start + match["duration"]
-            if start < ws:
-                cost += (ws - start) * self.WINDOW_PENALTY_PER_MIN
-            elif end > we:
-                cost += (end - we) * self.WINDOW_PENALTY_PER_MIN
-            else:
-                cost += (start - ws) * self.EARLY_PREF_PER_MIN
-
-            # Field preference penalty
-            pref = self._get_preference(match["home"])
-            if pref:
-                field = next((f for f in self.fields if f["id"] == fid), None)
-                preferred_ids = pref.get("preferred_field_ids", [])
-                if preferred_ids and fid not in preferred_ids:
-                    cost += self.FIELD_PREF_PENALTY
-
-        # Team conflict (pairwise)
-        for i in range(len(items)):
-            mid1, fid1, s1, m1 = items[i]
-            e1 = s1 + m1["duration"]
-
-            for j in range(i + 1, len(items)):
-                mid2, fid2, s2, m2 = items[j]
-                e2 = s2 + m2["duration"]
-
-                if not (s1 < e2 and s2 < e1):
-                    continue
-
-                if (m1["home"] in (m2["home"], m2["away"]) or
-                        m1["away"] in (m2["home"], m2["away"])):
-                    cost += self.TEAM_OVERLAP_PENALTY
-
-        # Field capacity (per time slot — catches multi-match overflows pairwise misses)
-        for t in self.time_slots:
-            t_min = to_min(t)
-            by_field = {}
-            for mid, fid, start, match in items:
-                end = start + match["duration"]
-                if start <= t_min < end:
-                    by_field[fid] = by_field.get(fid, 0.0) + match["field_size"]
-            for fid, total in by_field.items():
-                excess = total - 1.0
-                if excess > 1e-6:
-                    cost += self.FIELD_CAPACITY_PENALTY * excess
-
-        # Warm-up capacity conflicts (warm-up vs match and warm-up vs warm-up)
-        for i in range(len(items)):
-            mid1, fid1, s1, m1 = items[i]
-            wu1_start = s1 - self.WARMUP_DURATION
-            wu1_size  = self._warmup_size(m1)
-
-            for j in range(i + 1, len(items)):
-                mid2, fid2, s2, m2 = items[j]
-                if fid1 != fid2:
-                    continue
-                e2        = s2 + m2["duration"]
-                wu2_start = s2 - self.WARMUP_DURATION
-                wu2_size  = self._warmup_size(m2)
-
-                def ov(a1, a2, b1, b2): return a1 < b2 and b1 < a2
-
-                # warmup1 vs match2
-                if ov(wu1_start, s1, s2, e2):
-                    excess = wu1_size + m2["field_size"] - 1.0
-                    if excess > 1e-6:
-                        cost += self.FIELD_CAPACITY_PENALTY * excess
-
-                # match1 vs warmup2
-                if ov(s1, s1 + m1["duration"], wu2_start, s2):
-                    excess = m1["field_size"] + wu2_size - 1.0
-                    if excess > 1e-6:
-                        cost += self.FIELD_CAPACITY_PENALTY * excess
-
-                # warmup1 vs warmup2
-                if ov(wu1_start, s1, wu2_start, s2):
-                    excess = wu1_size + wu2_size - 1.0
-                    if excess > 1e-6:
-                        cost += self.FIELD_CAPACITY_PENALTY * excess
-
-        # Locker sharing penalty
-        cost += self._locker_cost(assignment)
+        # Field preference penalty
+        pref = self._get_preference(match["home"])
+        if pref:
+            preferred_ids = pref.get("preferred_field_ids", [])
+            if preferred_ids and fid not in preferred_ids:
+                cost += self.FIELD_PREF_PENALTY
 
         return cost
+
+    # ------------------------------------------------------------------
+    # PAIRWISE COST  (penalties between two matches)
+    # ------------------------------------------------------------------
+
+    def _pair_cost_team_overlap(self, mid1, mid2, assignment):
+        """Team overlap penalty for a pair that shares a team."""
+        fid1, start1 = assignment[mid1]
+        fid2, start2 = assignment[mid2]
+        m1 = self.match_by_id[mid1]
+        m2 = self.match_by_id[mid2]
+        e1 = start1 + m1["duration"]
+        e2 = start2 + m2["duration"]
+
+        if start1 < e2 and start2 < e1:
+            return self.TEAM_OVERLAP_PENALTY
+        return 0.0
+
+    def _pair_cost_field(self, mid1, mid2, assignment):
+        """Field capacity + warmup conflict penalty for two matches on the same field."""
+        fid1, start1 = assignment[mid1]
+        fid2, start2 = assignment[mid2]
+        if fid1 != fid2:
+            return 0.0
+
+        m1 = self.match_by_id[mid1]
+        m2 = self.match_by_id[mid2]
+        e1 = start1 + m1["duration"]
+        e2 = start2 + m2["duration"]
+        wu1_start = start1 - self.WARMUP_DURATION
+        wu2_start = start2 - self.WARMUP_DURATION
+        wu1_size = self._warmup_size(m1)
+        wu2_size = self._warmup_size(m2)
+
+        cost = 0.0
+
+        # Match vs match capacity
+        if start1 < e2 and start2 < e1:
+            excess = m1["field_size"] + m2["field_size"] - 1.0
+            if excess > 1e-6:
+                cost += self.FIELD_CAPACITY_PENALTY * excess
+
+        # Warmup1 vs match2
+        if wu1_start < e2 and start2 < start1:
+            excess = wu1_size + m2["field_size"] - 1.0
+            if excess > 1e-6:
+                cost += self.FIELD_CAPACITY_PENALTY * excess
+
+        # Match1 vs warmup2
+        if start1 < start2 and wu2_start < e1:
+            excess = m1["field_size"] + wu2_size - 1.0
+            if excess > 1e-6:
+                cost += self.FIELD_CAPACITY_PENALTY * excess
+
+        # Warmup1 vs warmup2
+        if wu1_start < start2 and wu2_start < start1:
+            excess = wu1_size + wu2_size - 1.0
+            if excess > 1e-6:
+                cost += self.FIELD_CAPACITY_PENALTY * excess
+
+        return cost
+
+    def _pair_cost_locker(self, mid1, mid2, assignment):
+        """
+        Fast locker pressure approximation. Each overlapping pair adds
+        a small penalty. With N concurrent matches needing 2 lockers each,
+        there are C(N,2) pairs — so the penalty grows quadratically,
+        naturally escalating when concurrency exceeds locker capacity.
+        Scaled so that exceeding capacity (~5+ concurrent with 8 lockers)
+        becomes expensive.
+        """
+        _, start1 = assignment[mid1]
+        _, start2 = assignment[mid2]
+        m1 = self.match_by_id[mid1]
+        m2 = self.match_by_id[mid2]
+
+        # Locker windows: start - buffer .. end + buffer
+        lk1_start = start1 - self.LOCKER_BUFFER
+        lk1_end   = start1 + m1["duration"] + self.LOCKER_BUFFER
+        lk2_start = start2 - self.LOCKER_BUFFER
+        lk2_end   = start2 + m2["duration"] + self.LOCKER_BUFFER
+
+        if lk1_start < lk2_end and lk2_start < lk1_end:
+            return 8.0
+        return 0.0
+
+    # ------------------------------------------------------------------
+    # FULL COST  (used once for initial solution)
+    # ------------------------------------------------------------------
+
+    def _full_cost(self, assignment):
+        """Compute total cost from scratch. Used for initial solution only."""
+        cost = 0.0
+        ids = list(assignment.keys())
+
+        # Per-match costs
+        for mid in ids:
+            fid, start = assignment[mid]
+            cost += self._match_cost(mid, fid, start)
+
+        # Team overlap (only pre-computed conflict pairs)
+        for mid1, mid2 in self.conflict_pairs:
+            if mid1 in assignment and mid2 in assignment:
+                cost += self._pair_cost_team_overlap(mid1, mid2, assignment)
+
+        # Field capacity + warmup + locker pressure (all pairs)
+        for i in range(len(ids)):
+            fid_i, _ = assignment[ids[i]]
+            for j in range(i + 1, len(ids)):
+                fid_j, _ = assignment[ids[j]]
+                if fid_i == fid_j:
+                    cost += self._pair_cost_field(ids[i], ids[j], assignment)
+                cost += self._pair_cost_locker(ids[i], ids[j], assignment)
+
+        return cost
+
+    # ------------------------------------------------------------------
+    # DELTA COST  (fast: only recompute what changed)
+    # ------------------------------------------------------------------
+
+    def _delta_cost(self, assignment, old_assignment, changed_ids):
+        """
+        Compute cost difference when only `changed_ids` moved.
+        Returns new_cost - old_cost (negative = improvement).
+        """
+        delta = 0.0
+        all_ids = list(assignment.keys())
+
+        # Per-match cost difference for changed matches
+        for mid in changed_ids:
+            old_fid, old_start = old_assignment[mid]
+            new_fid, new_start = assignment[mid]
+            delta -= self._match_cost(mid, old_fid, old_start)
+            delta += self._match_cost(mid, new_fid, new_start)
+
+        # Team overlap: only pairs involving changed matches
+        for mid1, mid2 in self.conflict_pairs:
+            if mid1 not in assignment or mid2 not in assignment:
+                continue
+            if mid1 not in changed_ids and mid2 not in changed_ids:
+                continue
+            # Remove old contribution
+            delta -= self._pair_cost_team_overlap(mid1, mid2, old_assignment)
+            # Add new contribution
+            delta += self._pair_cost_team_overlap(mid1, mid2, assignment)
+
+        # Field capacity + locker pressure: pairs involving changed matches
+        for mid in changed_ids:
+            new_fid, _ = assignment[mid]
+            old_fid, _ = old_assignment[mid]
+
+            for other_mid in all_ids:
+                if other_mid == mid:
+                    continue
+                # Skip if both changed — will be counted when we process the other one
+                if other_mid in changed_ids and other_mid < mid:
+                    continue
+
+                other_fid, _ = assignment[other_mid]
+                old_other_fid, _ = old_assignment[other_mid]
+
+                # Remove old field pair cost (if they were on same field)
+                if old_fid == old_other_fid:
+                    delta -= self._pair_cost_field(mid, other_mid, old_assignment)
+                # Add new field pair cost (if they are now on same field)
+                if new_fid == other_fid:
+                    delta += self._pair_cost_field(mid, other_mid, assignment)
+
+                # Locker pressure (pairwise, always checked)
+                delta -= self._pair_cost_locker(mid, other_mid, old_assignment)
+                delta += self._pair_cost_locker(mid, other_mid, assignment)
+
+        return delta
+
+    # ------------------------------------------------------------------
+    # LOCKER COST
+    # ------------------------------------------------------------------
 
     def _locker_cost(self, assignment):
         """Simulate locker assignment and return total sharing penalty."""
         placed = []
         total  = 0
 
-        for mid, (fid, t) in sorted(assignment.items(), key=lambda x: to_min(x[1][1])):
-            match     = next(m for m in self.matches if m["id"] == mid)
-            start_min = to_min(t)
-            end_min   = start_min + match["duration"]
-            lk_start  = start_min - self.LOCKER_BUFFER
-            lk_end    = end_min   + self.LOCKER_BUFFER
+        for mid, (fid, start) in sorted(assignment.items(), key=lambda x: x[1][1]):
+            match     = self.match_by_id[mid]
+            end       = start + match["duration"]
+            lk_start  = start - self.LOCKER_BUFFER
+            lk_end    = end   + self.LOCKER_BUFFER
             lk_dur    = lk_end - lk_start
 
             free = [
@@ -227,7 +357,7 @@ class SAScheduler:
             ]
 
             # Sort free lockers so preferred ones come first
-            pref = next((p for p in self.preferences if p["team"] == match["home"]), None)
+            pref = self._get_preference(match["home"])
             preferred_locker_ids = pref.get("preferred_locker_ids", []) if pref else []
             if preferred_locker_ids:
                 free.sort(key=lambda lk: 0 if lk["id"] in preferred_locker_ids else 1)
@@ -265,16 +395,27 @@ class SAScheduler:
         from app.services.optimizer.greedy_solver import GreedyScheduler
         greedy = GreedyScheduler(
             self.raw_matches, self.fields, self.lockers,
-            self.preferences, self.slot_size
+            self.preferences, self.slot_size, fixed_slots=self.fixed_slots
         )
         result = greedy.solve()
 
-        assignment = {s["match_id"]: (s["field_id"], s["time"]) for s in result}
+        # Store as {match_id: (field_id, start_minutes)} for fast math
+        assignment = {}
+        for s in result:
+            assignment[s["match_id"]] = (s["field_id"], to_min(s["time"]))
 
         # Fall back for any unplaced matches
+        first_slot = self.time_slot_mins[0] if self.time_slot_mins else 510
         for m in self.matches:
             if m["id"] not in assignment:
-                assignment[m["id"]] = (self.fields[0]["id"], self.time_slots[0])
+                assignment[m["id"]] = (self.fields[0]["id"], first_slot)
+
+        # Track which match IDs are fixed (never moved by SA)
+        self.fixed_match_ids = set()
+        for m in self.matches:
+            fix = self.fixed_by_team.get(m["home"])
+            if fix and fix.get("time") and fix.get("field_id"):
+                self.fixed_match_ids.add(m["id"])
 
         return assignment
 
@@ -285,33 +426,40 @@ class SAScheduler:
     def _neighbor(self, assignment):
         new = dict(assignment)
         move = random.choice(["time", "field", "swap", "both"])
-        ids  = list(new.keys())
+        movable = [mid for mid in new if mid not in self.fixed_match_ids]
+
+        if not movable:
+            return new, set()
 
         if move == "time":
-            mid = random.choice(ids)
+            mid = random.choice(movable)
             fid, _ = new[mid]
-            new[mid] = (fid, random.choice(self.time_slots))
+            new[mid] = (fid, random.choice(self.time_slot_mins))
+            return new, {mid}
 
         elif move == "field":
-            mid = random.choice(ids)
-            _, t = new[mid]
-            new[mid] = (random.choice(self.fields)["id"], t)
+            mid = random.choice(movable)
+            _, start = new[mid]
+            new[mid] = (random.choice(self.fields)["id"], start)
+            return new, {mid}
 
         elif move == "both":
-            mid = random.choice(ids)
-            new[mid] = (random.choice(self.fields)["id"], random.choice(self.time_slots))
+            mid = random.choice(movable)
+            new[mid] = (random.choice(self.fields)["id"], random.choice(self.time_slot_mins))
+            return new, {mid}
 
-        elif move == "swap" and len(ids) >= 2:
-            m1, m2 = random.sample(ids, 2)
+        elif move == "swap" and len(movable) >= 2:
+            m1, m2 = random.sample(movable, 2)
             new[m1], new[m2] = new[m2], new[m1]
+            return new, {m1, m2}
 
-        return new
+        return new, set()
 
     # ------------------------------------------------------------------
     # LOCKER ASSIGNMENT  (same logic as greedy)
     # ------------------------------------------------------------------
 
-    def _assign_lockers(self, start_min, duration, placed):
+    def _assign_lockers(self, start_min, duration, placed, match=None):
         end_min        = start_min + duration
         lk_start       = start_min - self.LOCKER_BUFFER
         lk_end         = end_min   + self.LOCKER_BUFFER
@@ -326,6 +474,13 @@ class SAScheduler:
                 for s in placed
             )
         ]
+
+        # Sort free lockers so preferred ones come first
+        if match:
+            pref = self._get_preference(match["home"])
+            preferred_ids = pref.get("preferred_locker_ids", []) if pref else []
+            if preferred_ids:
+                free.sort(key=lambda lk: 0 if lk["id"] in preferred_ids else 1)
 
         penalty = 0
         if len(free) >= 2:
@@ -352,11 +507,14 @@ class SAScheduler:
 
     def _build_schedule(self, assignment):
         placed = []
-        for mid, (fid, t) in sorted(assignment.items(), key=lambda x: to_min(x[1][1])):
-            match = next(m for m in self.matches if m["id"] == mid)
-            field = next((f for f in self.fields if f["id"] == fid), None)
-            start_min = to_min(t)
-            lockers   = self._assign_lockers(start_min, match["duration"], placed)
+        for mid, (fid, start) in sorted(assignment.items(), key=lambda x: x[1][1]):
+            match = self.match_by_id[mid]
+            field = self.field_by_id.get(fid)
+            lockers = self._assign_lockers(start, match["duration"], placed, match)
+
+            # Convert minutes back to HH:MM
+            h, m = divmod(start, 60)
+            time_str = f"{h:02d}:{m:02d}"
 
             entry = {
                 "match_id":        mid,
@@ -364,7 +522,7 @@ class SAScheduler:
                 "away":            match["away"],
                 "field_id":        fid,
                 "field_name":      field["name"] if field else str(fid),
-                "time":            t,
+                "time":            time_str,
                 "duration":        match["duration"],
                 "field_size":      match["field_size"],
                 "warmup_size":     self._warmup_size(match),
@@ -387,7 +545,7 @@ class SAScheduler:
         n_steps = int(math.log(self.T_MIN / self.T_INIT) / math.log(self.COOLING))
 
         current      = self._initial_assignment()
-        current_cost = self._cost(current)
+        current_cost = self._full_cost(current)
         best         = dict(current)
         best_cost    = current_cost
         initial_cost = current_cost
@@ -400,22 +558,35 @@ class SAScheduler:
         print(f"{'='*55}")
 
         T = self.T_INIT
+        step = 0
+        RESYNC_EVERY = 50  # full cost recalc every N temperature steps
 
         while T > self.T_MIN:
             for _ in range(self.ITER_PER_T):
-                neighbor      = self._neighbor(current)
-                neighbor_cost = self._cost(neighbor)
-                delta         = neighbor_cost - current_cost
+                neighbor, changed_ids = self._neighbor(current)
+
+                if not changed_ids:
+                    continue
+
+                delta = self._delta_cost(neighbor, current, changed_ids)
 
                 if delta < 0 or random.random() < math.exp(-delta / T):
                     current      = neighbor
-                    current_cost = neighbor_cost
+                    current_cost += delta
 
                     if current_cost < best_cost:
                         best      = dict(current)
                         best_cost = current_cost
 
             T *= self.COOLING
+            step += 1
+
+            # Periodic full recalc to correct floating-point drift
+            if step % RESYNC_EVERY == 0:
+                current_cost = self._full_cost(current)
+                full_best = self._full_cost(best)
+                if full_best < best_cost:
+                    best_cost = full_best
 
         improvement = initial_cost - best_cost
         print(f"  Cost: {initial_cost:.1f} → {best_cost:.1f}  "
