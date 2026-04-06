@@ -21,6 +21,7 @@ from app.services.sportlink import get_matches_for_date
 from app.services.optimizer.greedy_solver import GreedyScheduler
 from app.services.optimizer.milp_solver import MILPScheduler
 from app.services.optimizer.sa_solver import SAScheduler
+from app.services.optimizer.cpsat_solver import CPSATScheduler
 
 router = APIRouter(prefix="/optimize", tags=["Optimization"])
 
@@ -104,6 +105,10 @@ async def run_optimizer(req: RunRequest):
     elif algo == "milp":
         solver = MILPScheduler(matches, fields, lockers, preferences, date, fixed_slots=fixed_slots, priorities=priorities)
         solver.build()
+        result = solver.solve()
+
+    elif algo == "cpsat":
+        solver = CPSATScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities)
         result = solver.solve()
 
     else:

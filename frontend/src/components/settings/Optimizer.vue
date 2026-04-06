@@ -92,6 +92,16 @@ const algorithms = [
       'Zoals een trainer die écht elke mogelijke opstelling op papier uitwerkt voor hij een beslissing neemt.',
     when: 'Als je het absolute maximum wilt en de tijd hebt om te wachten.',
   },
+  {
+    value: 'cpsat',
+    label: 'CP-SAT',
+    badge: 'optimaal',
+    badgeClass: 'border-purple-200 text-purple-700 bg-purple-50',
+    description:
+      'Optimaliseert veld, tijd én kleedkamers in één keer met constraint programming. ' +
+      'Begrijpt regels als "geen overlap" en "andere kleedkamer" direct — zonder wiskundige omwegen. Snel en gegarandeerd het beste resultaat.',
+    when: 'De beste keuze. Snel, optimaal, en optimaliseert alles tegelijk.',
+  },
 ]
 
 onMounted(async () => {

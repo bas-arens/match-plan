@@ -91,6 +91,7 @@ const algorithms = [
   { value: 'greedy', label: 'Greedy',   activeClass: 'border-emerald-500 text-emerald-600 bg-emerald-50' },
   { value: 'sa',     label: 'SA',       activeClass: 'border-blue-500 text-blue-600 bg-blue-50' },
   { value: 'milp',   label: 'MILP',     activeClass: 'border-orange-500 text-orange-600 bg-orange-50' },
+  { value: 'cpsat',  label: 'CP-SAT',   activeClass: 'border-purple-500 text-purple-600 bg-purple-50' },
 ]
 
 onMounted(async () => {
