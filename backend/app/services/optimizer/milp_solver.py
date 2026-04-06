@@ -68,7 +68,7 @@ class MILPScheduler:
 
     # ------------------------------------------------------
     def _generate_time_slots(self):
-        start = self.date.replace(hour=8, minute=0)
+        start = self.date.replace(hour=8, minute=30)
         end   = self.date.replace(hour=20, minute=0)
         slots = []
         cur = start
