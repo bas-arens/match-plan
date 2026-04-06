@@ -32,6 +32,21 @@
 
         <MatchCount :count="matches.length" />
 
+        <!-- Algorithm selector -->
+        <div class="flex gap-2 justify-center">
+          <button
+            v-for="opt in algorithms"
+            :key="opt.value"
+            @click="selectAlgo(opt.value)"
+            class="px-4 py-1.5 text-xs font-semibold rounded-full border-2 transition-all"
+            :class="algo === opt.value
+              ? `${opt.activeClass} shadow-sm`
+              : `border-gray-200 text-gray-400 hover:border-gray-300`"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+
       </div>
     </template>
 
@@ -50,13 +65,14 @@
 //   planMatchday    — calls the optimizer API for the selected date; on success
 //                     saves the result to planStore and navigates to /matchplan
 // ─────────────────────────────────────────────────────────────────────────────
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout  from '@/components/layout/main-layout.vue'
 import Calendar    from '@/components/calendar/calendar.vue'
 import MatchList   from '@/components/matches/match-list.vue'
 import MatchCount  from '@/components/calendar/match-count.vue'
 import { runOptimizer } from '@/services/optimizer.js'
+import { getOptimizer, saveOptimizer } from '@/services/settings.js'
 import { planStore }    from '@/stores/planStore.js'
 import { useNotification } from '@/composables/useNotification.js'
 import { Loader2, CalendarCheck } from 'lucide-vue-next'
@@ -68,6 +84,24 @@ const selectedDate = ref(null)
 const loading      = ref(false)
 const progress     = ref(0)
 let progressRAF    = null
+
+const algo = ref('sa')
+
+const algorithms = [
+  { value: 'greedy', label: 'Greedy',   activeClass: 'border-emerald-500 text-emerald-600 bg-emerald-50' },
+  { value: 'sa',     label: 'SA',       activeClass: 'border-blue-500 text-blue-600 bg-blue-50' },
+  { value: 'milp',   label: 'MILP',     activeClass: 'border-orange-500 text-orange-600 bg-orange-50' },
+]
+
+onMounted(async () => {
+  const data = await getOptimizer()
+  algo.value = data.algorithm ?? 'sa'
+})
+
+function selectAlgo(value) {
+  algo.value = value
+  saveOptimizer({ algorithm: value })
+}
 
 function startProgress() {
   const start = performance.now()
