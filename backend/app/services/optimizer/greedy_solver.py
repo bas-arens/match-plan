@@ -35,13 +35,19 @@ class GreedyScheduler:
 
     DEFAULT_WINDOW = {"start": "08:00", "end": "20:00"}
 
-    def __init__(self, matches, fields, lockers, preferences=None, slot_size=15, fixed_slots=None):
+    def __init__(self, matches, fields, lockers, preferences=None, slot_size=15, fixed_slots=None, priorities=None):
         self.raw_matches  = matches
         self.fields       = fields
         self.lockers      = lockers
         self.preferences  = preferences or []
         self.slot_size    = slot_size
         self.fixed_slots  = fixed_slots or []
+        self.priorities   = priorities or {"lockers": 1, "time_windows": 1, "field_preference": 1}
+
+        # Apply priority multipliers to penalty weights
+        self.LOCKER_PENALTY      = 50 * self.priorities["lockers"]
+        self.LOCKER_PREF_PENALTY = 30 * self.priorities["lockers"]
+        self.FIELD_PREF_PENALTY  = 30 * self.priorities["field_preference"]
 
         # Build lookup: team → fixed slot config
         self.fixed_by_team = {fs["team"]: fs for fs in self.fixed_slots}

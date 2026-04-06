@@ -33,8 +33,9 @@
     </div>
 
     <!-- TAB: OPTIMIZER -->
-    <div v-if="activeTab === 'optimizer'">
+    <div v-if="activeTab === 'optimizer'" class="space-y-10">
       <OptimizerSettings />
+      <PrioritySettings />
     </div>
 
   </div>
@@ -55,6 +56,7 @@ import LockerRoomSettings from '@/components/settings/Lockerrooms.vue'
 import TeamPreferences    from '@/components/settings/TeamPreferences.vue'
 import FixedSlots         from '@/components/settings/FixedSlots.vue'
 import OptimizerSettings  from '@/components/settings/Optimizer.vue'
+import PrioritySettings   from '@/components/settings/Priorities.vue'
 
 const activeTab = ref('resources')
 

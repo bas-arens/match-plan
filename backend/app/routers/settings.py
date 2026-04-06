@@ -123,6 +123,26 @@ def save_optimizer(opt: OptimizerSettings):
 
 
 # -------------------------
+# Priorities
+# -------------------------
+class Priorities(BaseModel):
+    lockers: int = 1        # 0 = niet belangrijk, 1 = normaal, 2 = heel belangrijk
+    time_windows: int = 1
+    field_preference: int = 1
+
+
+@router.get("/priorities")
+def get_priorities():
+    return load_json("priorities", default={"lockers": 1, "time_windows": 1, "field_preference": 1})
+
+
+@router.post("/priorities")
+def save_priorities(p: Priorities):
+    save_json("priorities", p.dict())
+    return {"status": "saved"}
+
+
+# -------------------------
 # Fixed Slots
 # -------------------------
 class FixedSlot(BaseModel):

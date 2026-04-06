@@ -30,12 +30,13 @@ class MILPScheduler:
     WARMUP_DURATION = 15
     TIME_LIMIT      = 30   # seconds
 
-    def __init__(self, matches, fields, lockers, preferences=None, date=None, fixed_slots=None):
+    def __init__(self, matches, fields, lockers, preferences=None, date=None, fixed_slots=None, priorities=None):
         self.raw_matches  = matches
         self.fields       = fields
         self.lockers      = lockers
         self.preferences  = preferences or []
         self.fixed_slots  = fixed_slots or []
+        self.priorities   = priorities or {"lockers": 1, "time_windows": 1, "field_preference": 1}
 
         self.date = datetime.strptime(date, "%Y-%m-%d")
 
@@ -205,9 +206,10 @@ class MILPScheduler:
 
         # ----- Objective: window + earliness + field preference -----
         terms = []
-        W_PENALTY = 1     # per minute outside window (matches SA + frontend)
-        E_PENALTY = 0.5   # per minute late within window (prefer early start)
-        F_PENALTY = 30    # per match on non-preferred field (matches SA + frontend)
+        p = self.priorities
+        W_PENALTY = 1   * p["time_windows"]       # per minute outside window
+        E_PENALTY = 0.5 * p["time_windows"]       # per minute late within window
+        F_PENALTY = 30  * p["field_preference"]    # per match on non-preferred field
 
         for m in self.matches:
             mid = m["id"]

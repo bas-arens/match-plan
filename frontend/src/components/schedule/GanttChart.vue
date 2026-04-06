@@ -193,6 +193,7 @@ const props = defineProps({
   preferences: { type: Array, default: () => [] },
   allFields:   { type: Array, default: () => [] },
   lockers:     { type: Array, default: () => [] },
+  priorities:  { type: Object, default: () => ({ lockers: 1, time_windows: 1, field_preference: 1 }) },
 })
 
 // ─── CONSTANTS ───────────────────────────────────────────────
@@ -207,10 +208,14 @@ const LANE_LABELS = ['A1', 'A2', 'B1', 'B2']
 const hours       = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
 const LOCKER_BUFFER         = 20
-const LOCKER_PENALTY        = 50
-const FIELD_PREF_PENALTY    = 30
-const SURFACE_AVOID_PENALTY = 40
+const BASE_LOCKER_PENALTY   = 50
+const BASE_FIELD_PENALTY    = 30
+const BASE_SURFACE_PENALTY  = 40
 const TEAM_OVERLAP_PENALTY  = 500
+
+const LOCKER_PENALTY        = computed(() => BASE_LOCKER_PENALTY  * (props.priorities.lockers ?? 1))
+const FIELD_PREF_PENALTY    = computed(() => BASE_FIELD_PENALTY   * (props.priorities.field_preference ?? 1))
+const SURFACE_AVOID_PENALTY = computed(() => BASE_SURFACE_PENALTY * (props.priorities.field_preference ?? 1))
 
 const AGE_GROUP_COLORS = {
   'senioren': '#3B82F6',  // blue
@@ -376,23 +381,24 @@ const penalties = computed(() => {
     if (m.startMin < ws)      win = ws - m.startMin
     else if (m.startMin > we) win = m.startMin - we
     if (win > 0) {
-      total += win
-      items.push({ type: 'window', match_id: m.match_id, points: win,
+      const winPts = win * (props.priorities.time_windows ?? 1)
+      total += winPts
+      items.push({ type: 'window', match_id: m.match_id, points: winPts,
         label: `${m.home}: ${win} min buiten tijdvenster` })
     }
 
     const preferredIds = pref.preferred_field_ids ?? []
     if (preferredIds.length > 0 && !preferredIds.includes(m.field_id)) {
-      total += FIELD_PREF_PENALTY
-      items.push({ type: 'field', match_id: m.match_id, points: FIELD_PREF_PENALTY,
+      total += FIELD_PREF_PENALTY.value
+      items.push({ type: 'field', match_id: m.match_id, points: FIELD_PREF_PENALTY.value,
         label: `${m.home}: niet op voorkeursveld` })
     }
 
     const avoidSurfaces = pref.avoid_surfaces ?? []
     const field = props.allFields.find(f => f.id === m.field_id)
     if (field && avoidSurfaces.includes(field.surface)) {
-      total += SURFACE_AVOID_PENALTY
-      items.push({ type: 'surface', match_id: m.match_id, points: SURFACE_AVOID_PENALTY,
+      total += SURFACE_AVOID_PENALTY.value
+      items.push({ type: 'surface', match_id: m.match_id, points: SURFACE_AVOID_PENALTY.value,
         label: `${m.home}: speelt op vermeden ondergrond (${field.surface})` })
     }
   }
@@ -426,8 +432,8 @@ const penalties = computed(() => {
       )
       let penalty = 0, homeLk, awayLk
       if (free.length >= 2)      { ;[homeLk, awayLk] = free }
-      else if (free.length === 1) { homeLk = free[0]; awayLk = props.lockers.find(l => l.id !== homeLk.id); penalty = LOCKER_PENALTY }
-      else                        { ;[homeLk, awayLk] = props.lockers; penalty = LOCKER_PENALTY * 2 }
+      else if (free.length === 1) { homeLk = free[0]; awayLk = props.lockers.find(l => l.id !== homeLk.id); penalty = LOCKER_PENALTY.value }
+      else                        { ;[homeLk, awayLk] = props.lockers; penalty = LOCKER_PENALTY.value * 2 }
 
       if (penalty > 0) {
         total += penalty

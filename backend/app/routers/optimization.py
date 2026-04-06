@@ -76,6 +76,7 @@ async def run_optimizer(req: RunRequest):
     lockers     = settings["lockers"]
     preferences = settings["preferences"]
     fixed_slots = settings.get("fixed_slots", [])
+    priorities  = settings.get("priorities", {"lockers": 1, "time_windows": 1, "field_preference": 1})
     opt_conf    = settings["optimizer"]  # contains: { "algorithm": "greedy" }
 
     # Fetch matches
@@ -93,15 +94,15 @@ async def run_optimizer(req: RunRequest):
     t0 = time.perf_counter()
 
     if algo == "greedy":
-        solver = GreedyScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots)
+        solver = GreedyScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities)
         result = solver.solve()
 
     elif algo == "sa":
-        solver = SAScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots)
+        solver = SAScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities)
         result = solver.solve()
 
     elif algo == "milp":
-        solver = MILPScheduler(matches, fields, lockers, preferences, date, fixed_slots=fixed_slots)
+        solver = MILPScheduler(matches, fields, lockers, preferences, date, fixed_slots=fixed_slots, priorities=priorities)
         solver.build()
         result = solver.solve()
 

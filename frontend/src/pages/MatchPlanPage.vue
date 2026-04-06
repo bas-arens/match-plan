@@ -64,6 +64,7 @@
           :preferences="preferences"
           :all-fields="allFields"
           :lockers="lockers"
+          :priorities="priorities"
         />
       </div>
 
@@ -141,7 +142,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { planStore } from '@/stores/planStore'
 import GanttChart from '@/components/schedule/GanttChart.vue'
-import { getPreferences, getFields, getLockers } from '@/services/settings.js'
+import { getPreferences, getFields, getLockers, getPriorities } from '@/services/settings.js'
 import { downloadCSV, downloadExcel, downloadPNG, downloadPDF } from '@/services/download.js'
 import { CalendarX, DoorOpen, TriangleAlert, Download, Timer } from 'lucide-vue-next'
 
@@ -149,6 +150,7 @@ const scheduled    = computed(() => planStore.result?.scheduled ?? [])
 const preferences  = ref([])
 const allFields    = ref([])
 const lockers      = ref([])
+const priorities   = ref({ lockers: 1, time_windows: 1, field_preference: 1 })
 const downloadOpen = ref(false)
 const downloadMenuRef = ref(null)
 const planningRef     = ref(null)
@@ -178,14 +180,16 @@ function onClickOutside(e) {
 
 onMounted(async () => {
   document.addEventListener('click', onClickOutside)
-  const [prefs, fields, lks] = await Promise.all([
+  const [prefs, fields, lks, prios] = await Promise.all([
     getPreferences(),
     getFields(),
     getLockers(),
+    getPriorities(),
   ])
   preferences.value = prefs
   allFields.value   = fields
   lockers.value     = lks
+  priorities.value  = prios
 })
 
 onUnmounted(() => {

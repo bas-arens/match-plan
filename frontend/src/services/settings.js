@@ -32,3 +32,6 @@ export const saveOptimizer   = settings    => apiFetch(`${BASE}/optimizer`,   { 
 
 export const getFixedSlots   = ()          => apiFetch(`${BASE}/fixed-slots`)
 export const saveFixedSlots  = slots       => apiFetch(`${BASE}/fixed-slots`, { method: 'POST', body: JSON.stringify(slots) })
+
+export const getPriorities   = ()          => apiFetch(`${BASE}/priorities`)
+export const savePriorities  = priorities  => apiFetch(`${BASE}/priorities`,  { method: 'POST', body: JSON.stringify(priorities) })
