@@ -3,16 +3,11 @@
 # Author:  Bas Arens
 # Purpose: Mixed-Integer Linear Programming scheduler using PuLP + CBC.
 #          Formulates match placement as an MILP problem with binary variables
-#          for slot assignment (x), locker assignment (y), and non-overlap
-#          ordering (z_team, z_lock). Minimizes deviation from team time windows.
+#          for slot assignment. Minimizes time-window deviation + field
+#          preference penalties. Locker assignment is done greedily after solve.
 #
 # Classes:
 #   MILPScheduler — __init__, build(), solve(), _extract_solution()
-#
-# Standalone helpers:
-#   to_minutes(t)          — "HH:MM" to integer minutes
-#   infer_field_size(name) — field fraction from team name
-#   infer_duration(name)   — match duration from team name
 # ─────────────────────────────────────────────────────────────────────────────
 
 from pulp import (
@@ -20,366 +15,313 @@ from pulp import (
 )
 from datetime import datetime, timedelta
 
+from app.services.sportlink import infer_field_size, infer_duration
+
 
 def to_minutes(t):
     h, m = map(int, t.split(":"))
     return h * 60 + m
 
 
-def infer_field_size(team_name):
-    t = team_name.upper()
-    if any(x in t for x in ("JO7","JO8","JO9","MO7","MO8","MO9")):
-        return 0.25
-    if any(x in t for x in ("JO10","JO11","MO10","MO11")):
-        return 0.5
-    if any(x in t for x in ("JO12","JO13","MO12","MO13")):
-        return 0.75
-    return 1.0
-
-
-def infer_duration(team_name):
-    t = team_name.upper()
-    if any(x in t for x in ("JO7","MO7")):
-        return 55
-    if any(x in t for x in ("JO8","MO8","JO9","MO9")):
-        return 65
-    if any(x in t for x in ("JO10","MO10","JO11","MO11")):
-        return 75
-    if any(x in t for x in ("JO12","MO12","JO13","MO13")):
-        return 75
-    if any(x in t for x in ("JO14","MO14","JO15","MO15")):
-        return 85
-    if any(x in t for x in ("JO16","MO16","JO17","MO17")):
-        return 95
-    return 105
-
-
-
 class MILPScheduler:
 
-    def __init__(self, matches, fields, lockers, windows=None, date=None, fixed_slots=None):
-        self.raw_matches = matches
-        self.fields = fields
-        self.lockers = lockers
-        self.windows = windows or []
-        self.fixed_slots = fixed_slots or []
+    LOCKER_BUFFER   = 20
+    LOCKER_PENALTY  = 50
+    WARMUP_DURATION = 15
+    TIME_LIMIT      = 30   # seconds
 
-        self.buffer_pre = 45
-        self.buffer_post = 45
+    def __init__(self, matches, fields, lockers, preferences=None, date=None, fixed_slots=None):
+        self.raw_matches  = matches
+        self.fields       = fields
+        self.lockers      = lockers
+        self.preferences  = preferences or []
+        self.fixed_slots  = fixed_slots or []
 
         self.date = datetime.strptime(date, "%Y-%m-%d")
 
-        self.matches = self._normalize_matches()
+        self.pref_by_team  = {p["team"]: p for p in self.preferences}
+        self.fixed_by_team = {fs["team"]: fs for fs in self.fixed_slots}
+        self.field_by_id   = {f["id"]: f for f in self.fields}
+
+        self.matches    = self._normalize_matches()
         self.time_slots = self._generate_time_slots()
 
-        # Build fixed slot lookup
-        self.fixed_by_team = {fs["team"]: fs for fs in self.fixed_slots}
-
-        self.problem = LpProblem("MatchPlanInterval_MILP", LpMinimize)
-
-        self.x = {}      # match m starts at time t on field f
-        self.y = {}      # locker assignment
-        self.z_team = {} # team non-overlap binaries
-        self.z_lock = {} # locker non-overlap binaries
-
+        self.problem = LpProblem("MatchPlan_MILP", LpMinimize)
+        self.x = {}  # (mid, fid, t) → binary variable
 
     # ------------------------------------------------------
     def _normalize_matches(self):
         out = []
         for i, m in enumerate(self.raw_matches):
+            home = m["thuisteam"]
+            pref = self.pref_by_team.get(home)
             out.append({
-                "id": str(m.get("wedstrijdcode") or f"AUTO_{i}"),
-                "home": m["thuisteam"],
-                "away": m["uitteam"],
-                "duration": infer_duration(m["thuisteam"]),
-                "field_size": infer_field_size(m["thuisteam"]),
+                "id":         str(m.get("wedstrijdcode") or f"AUTO_{i}"),
+                "home":       home,
+                "away":       m["uitteam"],
+                "duration":   infer_duration(home),
+                "field_size": infer_field_size(home),
+                "window_start": pref["start"] if pref else "08:00",
+                "window_end":   pref["end"]   if pref else "20:00",
             })
         return out
 
-
     # ------------------------------------------------------
     def _generate_time_slots(self):
-        start = self.date.replace(hour=7, minute=0)
-        end = self.date.replace(hour=18, minute=0)
-
+        start = self.date.replace(hour=8, minute=0)
+        end   = self.date.replace(hour=20, minute=0)
         slots = []
         cur = start
         while cur <= end:
             slots.append(cur.strftime("%H:%M"))
             cur += timedelta(minutes=15)
-
         return slots
 
+    # ------------------------------------------------------
+    def _valid_slots(self, match):
+        """Return only time slots where the match could reasonably start."""
+        ws = to_minutes(match["window_start"])
+        we = to_minutes(match["window_end"])
+        dur = match["duration"]
+        # Allow 60 min slack outside window so optimizer can trade off
+        earliest = max(to_minutes(self.time_slots[0]),  ws - 60)
+        latest   = min(to_minutes(self.time_slots[-1]), we + 60)
+        return [t for t in self.time_slots if earliest <= to_minutes(t) <= latest]
 
     # ------------------------------------------------------
     def build(self):
-        print("Building interval MILP...")
+        print("Building MILP...")
 
-        # -----------------------------
-        # Decision variables
-        # -----------------------------
+        # Big-M: max span of the scheduling day
+        M = to_minutes(self.time_slots[-1]) - to_minutes(self.time_slots[0]) + 200
+
+        # ----- Decision variables (pruned) -----
         for m in self.matches:
             mid = m["id"]
+            valid = self._valid_slots(m)
             for f in self.fields:
                 fid = str(f["id"])
-                for t in self.time_slots:
-                    name = f"x_{mid}_{fid}_{t.replace(':','_')}"
-                    self.x[(mid, fid, t)] = LpVariable(name, cat=LpBinary)
-
-        for m in self.matches:
-            mid = m["id"]
-            for role in ["home", "away"]:
-                for l in self.lockers:
-                    lid = str(l["id"])
-                    self.y[(mid, role, lid)] = LpVariable(
-                        f"y_{mid}_{role}_{lid}", cat=LpBinary
+                for t in valid:
+                    self.x[(mid, fid, t)] = LpVariable(
+                        f"x_{mid}_{fid}_{t.replace(':','_')}", cat=LpBinary
                     )
 
-        # non-overlap binaries
-        for i in range(len(self.matches)):
-            for j in range(i+1, len(self.matches)):
-                m1 = self.matches[i]["id"]
-                m2 = self.matches[j]["id"]
+        print(f"  Variables: {len(self.x)} (pruned by time windows)")
 
-                # team conflict binary
-                self.z_team[(m1, m2)] = LpVariable(
-                    f"z_team_{m1}_{m2}", cat=LpBinary
-                )
-
-                # locker conflict binaries
-                for l in self.lockers:
-                    lid = str(l["id"])
-                    self.z_lock[(m1, m2, lid)] = LpVariable(
-                        f"z_lock_{m1}_{m2}_{lid}", cat=LpBinary
-                    )
-
-        # -----------------------------
-        # C0: fix variables for fixed-slot matches
-        # -----------------------------
+        # ----- C0: Fixed slot constraints -----
         for m in self.matches:
             fix = self.fixed_by_team.get(m["home"])
             if not fix:
                 continue
             mid = m["id"]
-            fixed_time = fix.get("time")
+            fixed_time  = fix.get("time")
             fixed_field = fix.get("field_id")
-            fixed_locker = fix.get("locker_id")
+            if not fixed_time or not fixed_field:
+                continue
+            fid = str(fixed_field)
+            for key in list(self.x.keys()):
+                if key[0] != mid:
+                    continue
+                if key[1] == fid and key[2] == fixed_time:
+                    self.problem += self.x[key] == 1
+                else:
+                    self.problem += self.x[key] == 0
 
-            # Pin time + field
-            if fixed_time and fixed_field:
-                fid = str(fixed_field)
-                for f in self.fields:
-                    for t in self.time_slots:
-                        key = (mid, str(f["id"]), t)
-                        if key in self.x:
-                            if str(f["id"]) == fid and t == fixed_time:
-                                self.problem += self.x[key] == 1
-                            else:
-                                self.problem += self.x[key] == 0
-
-            # Pin home locker
-            if fixed_locker is not None:
-                lid = str(fixed_locker)
-                for l in self.lockers:
-                    key = (mid, "home", str(l["id"]))
-                    if key in self.y:
-                        if str(l["id"]) == lid:
-                            self.problem += self.y[key] == 1
-                        else:
-                            self.problem += self.y[key] == 0
-
-        # -----------------------------
-        # C1: each match exactly once
-        # -----------------------------
+        # ----- C1: Each match placed exactly once -----
         for m in self.matches:
             mid = m["id"]
-            self.problem += lpSum(
-                self.x[(mid, str(f["id"]), t)]
-                for f in self.fields
-                for t in self.time_slots
-            ) == 1
+            vars_for_match = [v for k, v in self.x.items() if k[0] == mid]
+            self.problem += lpSum(vars_for_match) == 1
 
-
-        # -----------------------------
-        # C2: field capacity
-        # -----------------------------
+        # ----- C2: Field capacity per time slot -----
         for f in self.fields:
             fid = str(f["id"])
             for s in self.time_slots:
                 s_min = to_minutes(s)
-
                 used = []
                 for m in self.matches:
                     mid = m["id"]
                     dur = m["duration"]
                     req = m["field_size"]
-
-                    for t in self.time_slots:
+                    for t in self._valid_slots(m):
                         t_min = to_minutes(t)
                         if t_min <= s_min < t_min + dur:
                             used.append(req * self.x[(mid, fid, t)])
+                if used:
+                    self.problem += lpSum(used) <= 1
 
-                self.problem += lpSum(used) <= 1
-
-
-        # -----------------------------
-        # C3: one home locker + one away locker
-        # -----------------------------
-        for m in self.matches:
-            mid = m["id"]
-
-            self.problem += lpSum(self.y[(mid, "home", str(l["id"]))] for l in self.lockers) == 1
-            self.problem += lpSum(self.y[(mid, "away", str(l["id"]))] for l in self.lockers) == 1
-
-
-        # -----------------------------
-        # Interval helper functions
-        # -----------------------------
-        def start_time(mid):
+        # ----- C3: Team non-overlap (only conflicting pairs) -----
+        # Helper: linearized start time for a match
+        def start_expr(mid):
             return lpSum(
-                to_minutes(t) * self.x[(mid, str(f["id"]), t)]
-                for f in self.fields for t in self.time_slots
+                to_minutes(t) * self.x[k]
+                for k in self.x if k[0] == mid
+                for t in [k[2]]
             )
 
-        def assigned_field(mid, fid, t):
-            return self.x[(mid, fid, t)]
-
-
-        # -----------------------------
-        # TEAM NON-OVERLAP
-        # -----------------------------
         for i in range(len(self.matches)):
-            for j in range(i+1, len(self.matches)):
-
+            for j in range(i + 1, len(self.matches)):
                 m1 = self.matches[i]
                 m2 = self.matches[j]
 
-                # skip if no shared team
-                if not (m1["home"] in [m2["home"], m2["away"]] or
-                        m1["away"] in [m2["home"], m2["away"]]):
+                if not (m1["home"] in (m2["home"], m2["away"]) or
+                        m1["away"] in (m2["home"], m2["away"])):
                     continue
 
-                mid1 = m1["id"]
-                mid2 = m2["id"]
+                mid1, mid2 = m1["id"], m2["id"]
+                z = LpVariable(f"z_{mid1}_{mid2}", cat=LpBinary)
 
-                t1 = start_time(mid1)
-                t2 = start_time(mid2)
+                t1 = start_expr(mid1)
+                t2 = start_expr(mid2)
 
-                d1 = m1["duration"] + self.buffer_pre + self.buffer_post
-                d2 = m2["duration"] + self.buffer_pre + self.buffer_post
+                # m1 finishes before m2 starts (or vice versa)
+                self.problem += t1 + m1["duration"] <= t2 + M * (1 - z)
+                self.problem += t2 + m2["duration"] <= t1 + M * z
 
-                z = self.z_team[(mid1, mid2)]
-
-                M = 2000
-
-                # m1 before m2
-                self.problem += t1 + d1 <= t2 + M * (1 - z)
-
-                # m2 before m1
-                self.problem += t2 + d2 <= t1 + M * z
-
-
-        # -----------------------------
-        # LOCKER NON-OVERLAP
-        # -----------------------------
-        for i in range(len(self.matches)):
-            for j in range(i+1, len(self.matches)):
-
-                m1 = self.matches[i]
-                m2 = self.matches[j]
-
-                mid1 = m1["id"]
-                mid2 = m2["id"]
-
-                t1 = start_time(mid1)
-                t2 = start_time(mid2)
-
-                d1 = m1["duration"] + self.buffer_pre + self.buffer_post
-                d2 = m2["duration"] + self.buffer_pre + self.buffer_post
-
-                for l in self.lockers:
-                    lid = str(l["id"])
-                    z = self.z_lock[(mid1, mid2, lid)]
-
-                    M = 2000
-
-                    # both assigned to same locker?
-                    assigned_both = (
-                        self.y[(mid1, "home", lid)]
-                        + self.y[(mid1, "away", lid)]
-                        + self.y[(mid2, "home", lid)]
-                        + self.y[(mid2, "away", lid)]
-                    )
-
-                    # enforce non-overlap only if both use locker l
-                    self.problem += t1 + d1 <= t2 + M * (1 - z) + M * (2 - assigned_both)
-                    self.problem += t2 + d2 <= t1 + M * z + M * (2 - assigned_both)
-
-
-        # -----------------------------
-        # OBJECTIVE (prefer windows)
-        # -----------------------------
+        # ----- Objective: minimize window deviation + field preference -----
         terms = []
-        P = 10
+        W_PENALTY = 10   # per minute outside window
+        F_PENALTY = 30   # per match on non-preferred field
 
         for m in self.matches:
             mid = m["id"]
-            team = m["home"]
-            dur = m["duration"]
+            ws = to_minutes(m["window_start"])
+            we = to_minutes(m["window_end"])
 
-            pref = next((w for w in self.windows if w["team"] == team), None)
-            if not pref:
-                continue
+            pref = self.pref_by_team.get(m["home"])
+            preferred_ids = [str(fid) for fid in pref.get("preferred_field_ids", [])] if pref else []
 
-            ws = to_minutes(pref["start"])
-            we = to_minutes(pref["end"])
+            for k, v in self.x.items():
+                if k[0] != mid:
+                    continue
+                _, fid, t = k
+                t_min = to_minutes(t)
 
-            for f in self.fields:
-                fid = str(f["id"])
-                for t in self.time_slots:
-                    t_min = to_minutes(t)
+                # Window penalty
+                if t_min < ws:
+                    terms.append((ws - t_min) * W_PENALTY * v)
+                elif t_min + m["duration"] > we:
+                    terms.append((t_min + m["duration"] - we) * W_PENALTY * v)
 
-                    if t_min < ws:
-                        terms.append((ws - t_min) * P * self.x[(mid, fid, t)])
-                    elif t_min > we:
-                        terms.append((t_min - we) * P * self.x[(mid, fid, t)])
+                # Field preference penalty
+                if preferred_ids and fid not in preferred_ids:
+                    terms.append(F_PENALTY * v)
 
         self.problem += lpSum(terms)
 
+        n_constraints = len(self.problem.constraints)
+        print(f"  Constraints: {n_constraints}")
         print("MILP build complete.\n")
 
-
     # ------------------------------------------------------
-
-
     def solve(self):
-        print("Solving...")
+        print(f"Solving (time limit {self.TIME_LIMIT}s)...")
 
-        # CBC solver with optimality cutoff:
         solver = PULP_CBC_CMD(
             msg=True,
-            options=[
-                "-bestObjStop", "1e-6"
-            ]
+            timeLimit=self.TIME_LIMIT,
         )
-
-
 
         self.problem.solve(solver)
 
-        print("Done.")
+        status = self.problem.status
+        print(f"Status: {['Not Solved','Optimal','Infeasible','Unbounded','Undefined'][status + 1]}")
+
         return self._extract_solution()
 
-
-
     # ------------------------------------------------------
+    def _warmup_size(self, match):
+        team = match["home"].upper()
+        return 0.125 if ("JO" in team or "MO" in team) else 0.25
+
+    def _assign_lockers(self, start_min, duration, placed, match=None):
+        end_min      = start_min + duration
+        lk_start     = start_min - self.LOCKER_BUFFER
+        lk_end       = end_min   + self.LOCKER_BUFFER
+        lk_duration  = lk_end - lk_start
+
+        free = [
+            lk for lk in self.lockers
+            if not any(
+                lk["id"] in (s["home_locker"], s["away_locker"])
+                and s["locker_start"] < lk_end
+                and s["locker_start"] + s["locker_duration"] > lk_start
+                for s in placed
+            )
+        ]
+
+        # Check for fixed locker
+        if match:
+            fix = self.fixed_by_team.get(match["home"])
+            if fix and fix.get("locker_id") is not None:
+                forced = next((lk for lk in self.lockers if lk["id"] == fix["locker_id"]), None)
+                if forced:
+                    remaining = [lk for lk in free if lk["id"] != forced["id"]]
+                    away_lk = remaining[0] if remaining else next(lk for lk in self.lockers if lk["id"] != forced["id"])
+                    return {
+                        "home_locker": forced["id"], "away_locker": away_lk["id"],
+                        "locker_start": lk_start, "locker_duration": lk_duration,
+                        "locker_penalty": 0,
+                    }
+
+        # Prefer preferred lockers
+        if match:
+            pref = self.pref_by_team.get(match["home"])
+            preferred_ids = pref.get("preferred_locker_ids", []) if pref else []
+            if preferred_ids:
+                free.sort(key=lambda lk: 0 if lk["id"] in preferred_ids else 1)
+
+        penalty = 0
+        if len(free) >= 2:
+            home_lk, away_lk = free[0], free[1]
+        elif len(free) == 1:
+            home_lk = free[0]
+            away_lk = next(lk for lk in self.lockers if lk["id"] != home_lk["id"])
+            penalty = self.LOCKER_PENALTY
+        else:
+            home_lk, away_lk = self.lockers[0], self.lockers[1]
+            penalty = self.LOCKER_PENALTY * 2
+
+        return {
+            "home_locker": home_lk["id"], "away_locker": away_lk["id"],
+            "locker_start": lk_start, "locker_duration": lk_duration,
+            "locker_penalty": penalty,
+        }
+
     def _extract_solution(self):
-        schedule = []
+        # Gather assigned (mid, fid, time) triples
+        assigned = []
         for (mid, fid, t), var in self.x.items():
-            if var.value() == 1:
-                schedule.append({
-                    "match_id": mid,
-                    "field_id": fid,
-                    "time": t,
-                })
-        return schedule
+            if var.value() and var.value() > 0.5:
+                assigned.append((mid, fid, t))
+
+        # Sort by start time, build full schedule with locker assignment
+        assigned.sort(key=lambda x: to_minutes(x[2]))
+        placed = []
+
+        for mid, fid, t in assigned:
+            match = next(m for m in self.matches if m["id"] == mid)
+            field = self.field_by_id.get(int(fid)) if fid.isdigit() else self.field_by_id.get(fid)
+            start_min = to_minutes(t)
+            lockers = self._assign_lockers(start_min, match["duration"], placed, match)
+
+            entry = {
+                "match_id":        mid,
+                "home":            match["home"],
+                "away":            match["away"],
+                "field_id":        int(fid) if fid.isdigit() else fid,
+                "field_name":      field["name"] if field else str(fid),
+                "time":            t,
+                "duration":        match["duration"],
+                "field_size":      match["field_size"],
+                "warmup_size":     self._warmup_size(match),
+                "warmup_duration": self.WARMUP_DURATION,
+                "home_locker":     lockers["home_locker"],
+                "away_locker":     lockers["away_locker"],
+                "locker_start":    lockers["locker_start"],
+                "locker_duration": lockers["locker_duration"],
+                "penalty":         lockers["locker_penalty"],
+            }
+            placed.append(entry)
+
+        return placed

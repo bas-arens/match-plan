@@ -13,13 +13,21 @@
         <Calendar v-model="matches" @dateSelected="onDateSelected" />
 
         <button
-          class="w-full bg-brand-dark hover:bg-gray-800 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          class="w-full relative overflow-hidden bg-brand-dark hover:bg-gray-800 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:cursor-wait"
           @click="planMatchday"
           :disabled="loading"
         >
-          <Loader2 v-if="loading" :size="16" class="animate-spin" />
-          <CalendarCheck v-else :size="16" />
-          <span>{{ loading ? 'Planner draait...' : 'Plan Matchday' }}</span>
+          <!-- Progress bar fill -->
+          <div
+            v-if="loading"
+            class="absolute inset-0 bg-white/15 origin-left"
+            :style="{ transform: `scaleX(${progress})` }"
+          />
+          <span class="relative flex items-center gap-2">
+            <Loader2 v-if="loading" :size="16" class="animate-spin" />
+            <CalendarCheck v-else :size="16" />
+            {{ loading ? 'Planner draait...' : 'Plan Matchday' }}
+          </span>
         </button>
 
         <MatchCount :count="matches.length" />
@@ -58,6 +66,26 @@ const { notify }   = useNotification()
 const matches      = ref([])
 const selectedDate = ref(null)
 const loading      = ref(false)
+const progress     = ref(0)
+let progressRAF    = null
+
+function startProgress() {
+  const start = performance.now()
+  progress.value = 0
+
+  function tick() {
+    const elapsed = (performance.now() - start) / 1000  // seconds
+    // Logarithmic ease: jumps to ~50% in first second, then crawls toward 90%
+    progress.value = Math.min(0.92, 1 - 1 / (1 + elapsed * 1.5))
+    progressRAF = requestAnimationFrame(tick)
+  }
+  progressRAF = requestAnimationFrame(tick)
+}
+
+function stopProgress() {
+  if (progressRAF) cancelAnimationFrame(progressRAF)
+  progress.value = 1
+}
 
 function onDateSelected(date) {
   selectedDate.value = date
@@ -70,21 +98,27 @@ async function planMatchday() {
   }
 
   loading.value = true
+  startProgress()
   const dateISO = selectedDate.value.toLocaleDateString('sv-SE')
 
   try {
     const res = await runOptimizer(dateISO)
+    stopProgress()
     if (res.status === 'ok') {
       planStore.result = res
       planStore.date   = dateISO
+      // Brief pause so user sees the bar hit 100%
+      await new Promise(r => setTimeout(r, 250))
       router.push('/matchplan')
     } else {
       notify('Geen thuiswedstrijden op deze datum.')
     }
   } catch {
+    stopProgress()
     notify('Kan planning niet genereren. Controleer de verbinding.')
   } finally {
     loading.value = false
+    progress.value = 0
   }
 }
 </script>

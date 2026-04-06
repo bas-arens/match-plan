@@ -22,7 +22,7 @@
         <thead>
           <tr class="text-left text-xs text-gray-400 border-b border-gray-100">
             <th class="pb-2 font-medium">Team</th>
-            <th class="pb-2 font-medium">Tijd</th>
+            <th class="pb-2 font-medium">Starttijd</th>
             <th class="pb-2 font-medium">Veld</th>
             <th class="pb-2 font-medium">Kleedkamer</th>
             <th class="pb-2"></th>
@@ -40,6 +40,7 @@
                 v-model="slot.team"
                 @change="debouncedSave"
                 class="w-full bg-transparent border-b border-transparent focus:border-gray-300 outline-none text-gray-800 py-0.5 text-sm"
+                style="font-family:inherit"
               >
                 <option value="" disabled>Kies team...</option>
                 <optgroup v-for="(teamList, category) in teams" :key="category" :label="category">
@@ -55,6 +56,7 @@
                 v-model="slot.time"
                 @input="debouncedSave"
                 class="bg-transparent border-b border-transparent focus:border-gray-300 outline-none text-gray-800 py-0.5 text-sm"
+                style="font-family:inherit"
               />
             </td>
 
@@ -64,6 +66,7 @@
                 v-model="slot.field_id"
                 @change="debouncedSave"
                 class="bg-transparent border-b border-transparent focus:border-gray-300 outline-none text-gray-600 text-sm py-0.5"
+                style="font-family:inherit"
               >
                 <option :value="null">—</option>
                 <option v-for="f in fields" :key="f.id" :value="f.id">{{ f.name }}</option>
@@ -76,6 +79,7 @@
                 v-model="slot.locker_id"
                 @change="debouncedSave"
                 class="bg-transparent border-b border-transparent focus:border-gray-300 outline-none text-gray-600 text-sm py-0.5"
+                style="font-family:inherit"
               >
                 <option :value="null">—</option>
                 <option v-for="l in lockers" :key="l.id" :value="l.id">{{ l.name }}</option>
