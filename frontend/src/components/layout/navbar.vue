@@ -48,11 +48,12 @@ function logout() {
 
         <!-- LEFT: Club Logo + App Name -->
         <RouterLink to="/" class="flex items-center flex-shrink-0">
+          <span class="text-white text-2xl font-bold">MatchPlan</span>
+          <span class="text-gray-400 text-2xl font-light mx-2">for</span>
           <img v-if="logoUrl" :src="logoUrl" class="h-10 w-auto rounded" alt="Club Logo" />
           <div v-else class="h-10 w-10 bg-gray-700 rounded flex items-center justify-center text-white font-bold text-sm">
-            MP
+            ?
           </div>
-          <span class="text-white text-2xl font-bold ml-2">MatchPlan</span>
         </RouterLink>
 
         <!-- RIGHT: Nav + Theme + Logout -->
