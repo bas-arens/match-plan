@@ -261,9 +261,16 @@ class MILPScheduler:
 
         self.problem.solve(solver)
 
-        status = self.problem.status
-        status_map = {1: "Optimal", 0: "Not Solved", -1: "Infeasible", -2: "Unbounded", -3: "Undefined"}
-        print(f"Status: {status_map.get(status, 'Unknown')}")
+        # sol_status: 1 = Optimal, 0 = Feasible (time limit), -1 = Infeasible
+        sol = getattr(self.problem, 'sol_status', None)
+        if sol == 1:
+            print("Status: Optimal")
+        elif self.problem.status == 1:
+            obj = self.problem.objective.value()
+            print(f"Status: Feasible (time limit) — objective {obj:.1f}")
+        else:
+            status_map = {0: "Not Solved", -1: "Infeasible", -2: "Unbounded", -3: "Undefined"}
+            print(f"Status: {status_map.get(self.problem.status, 'Unknown')}")
 
         return self._extract_solution()
 
