@@ -15,6 +15,7 @@
 import math
 import random
 import re
+import time
 from datetime import datetime, timedelta
 
 from app.services.sportlink import infer_field_size, infer_duration
@@ -31,7 +32,7 @@ class SAScheduler:
     WINDOW_PENALTY_PER_MIN  = 1
     EARLY_PREF_PER_MIN      = 0.5   # prefer earlier start within the time window
     FIELD_PREF_PENALTY      = 30
-    LOCKER_BUFFER           = 20
+    LOCKER_BUFFER_AFTER     = 30    # minutes after match for locker use
     LOCKER_PENALTY          = 50
     WARMUP_DURATION         = 15   # minutes of warm-up before match on the same field
 
@@ -44,6 +45,10 @@ class SAScheduler:
     T_MIN        = 0.3
     COOLING      = 0.998
     ITER_PER_T   = 60
+
+    # Hard wall-clock cap — cooling schedule finishes well under this on
+    # current workloads, but the cap guarantees SA is bounded.
+    TIME_LIMIT   = 180  # seconds
 
     DEFAULT_WINDOW = {"start": "08:00", "end": "20:00"}
 
@@ -85,8 +90,27 @@ class SAScheduler:
         # Number of locker slots (each match needs 2: home + away)
         self.num_lockers = len(self.lockers)
 
+        # Calibrated per-pair locker weight: 2 * LOCKER_PENALTY / num_lockers
+        self._locker_pair_weight = 2.0 * self.LOCKER_PENALTY / max(self.num_lockers, 1)
+
         # Pre-compute time slot minutes
         self.time_slot_mins = [to_min(t) for t in self.time_slots]
+
+        # Pre-compute window-aligned slots per match (for biased moves)
+        self.window_slots = {}   # mid → list of slot-minutes within/near the window
+        for m in self.matches:
+            ws = to_min(m["preferred"]["start"])
+            we = to_min(m["preferred"]["end"])
+            dur = m["duration"]
+            # Slots where match starts inside window and ends inside window
+            self.window_slots[m["id"]] = [
+                t for t in self.time_slot_mins
+                if ws <= t and t + dur <= we
+            ] or [
+                # Fallback: slots where start is within ±30 min of window
+                t for t in self.time_slot_mins
+                if ws - 30 <= t <= we
+            ]
 
     # ------------------------------------------------------------------
     # NORMALISATION  (same as greedy)
@@ -95,6 +119,14 @@ class SAScheduler:
     def _infer_age(self, team):
         m = re.search(r"JO(\d+)|MO(\d+)", team.upper())
         return int(m.group(1) or m.group(2)) if m else 100
+
+    def _locker_buffer_before(self, match):
+        """Minutes before the match that lockers are occupied, based on age."""
+        age = match["age"]
+        if age >= 100:    return 60   # seniors
+        if age >= 17:     return 45   # JO17–JO19
+        if age >= 13:     return 40   # JO13–JO15
+        return 30                     # JO8–JO12
 
     def _warmup_size(self, match):
         """1/4 field for seniors, 1/8 for juniors."""
@@ -227,25 +259,28 @@ class SAScheduler:
     def _pair_cost_locker(self, mid1, mid2, assignment):
         """
         Fast locker pressure approximation. Each overlapping pair adds
-        a small penalty. With N concurrent matches needing 2 lockers each,
-        there are C(N,2) pairs — so the penalty grows quadratically,
-        naturally escalating when concurrency exceeds locker capacity.
-        Scaled so that exceeding capacity (~5+ concurrent with 8 lockers)
-        becomes expensive.
+        a penalty calibrated to the actual locker assignment cost.
+
+        With N concurrent matches needing 2 lockers each and L lockers,
+        the actual cost is max(0, 2N - L) * LOCKER_PENALTY.
+        With C(N,2) overlapping pairs, the per-pair weight should be:
+            2 * LOCKER_PENALTY / L
+        This tracks the real penalty closely across different concurrency
+        levels without needing an expensive full locker simulation.
         """
         _, start1 = assignment[mid1]
         _, start2 = assignment[mid2]
         m1 = self.match_by_id[mid1]
         m2 = self.match_by_id[mid2]
 
-        # Locker windows: start - buffer .. end + buffer
-        lk1_start = start1 - self.LOCKER_BUFFER
-        lk1_end   = start1 + m1["duration"] + self.LOCKER_BUFFER
-        lk2_start = start2 - self.LOCKER_BUFFER
-        lk2_end   = start2 + m2["duration"] + self.LOCKER_BUFFER
+        # Locker windows: (start - before_buffer) .. (end + after_buffer)
+        lk1_start = start1 - self._locker_buffer_before(m1)
+        lk1_end   = start1 + m1["duration"] + self.LOCKER_BUFFER_AFTER
+        lk2_start = start2 - self._locker_buffer_before(m2)
+        lk2_end   = start2 + m2["duration"] + self.LOCKER_BUFFER_AFTER
 
         if lk1_start < lk2_end and lk2_start < lk1_end:
-            return 8.0
+            return self._locker_pair_weight
         return 0.0
 
     # ------------------------------------------------------------------
@@ -348,8 +383,8 @@ class SAScheduler:
         for mid, (fid, start) in sorted(assignment.items(), key=lambda x: x[1][1]):
             match     = self.match_by_id[mid]
             end       = start + match["duration"]
-            lk_start  = start - self.LOCKER_BUFFER
-            lk_end    = end   + self.LOCKER_BUFFER
+            lk_start  = start - self._locker_buffer_before(match)
+            lk_end    = end   + self.LOCKER_BUFFER_AFTER
             lk_dur    = lk_end - lk_start
 
             free = [
@@ -425,9 +460,35 @@ class SAScheduler:
     # NEIGHBOUR MOVES
     # ------------------------------------------------------------------
 
+    def _pick_time(self, mid):
+        """Pick a time slot biased toward the match's preferred window.
+        70% chance: pick within/near window (favoring early slots).
+        30% chance: pick any slot (exploration)."""
+        if random.random() < 0.7:
+            slots = self.window_slots.get(mid)
+            if slots:
+                # Bias toward earlier slots: pick from the first half 60% of the time
+                half = max(1, len(slots) // 2)
+                if random.random() < 0.6:
+                    return random.choice(slots[:half])
+                return random.choice(slots)
+        return random.choice(self.time_slot_mins)
+
     def _neighbor(self, assignment):
         new = dict(assignment)
-        move = random.choice(["time", "field", "swap", "both"])
+        # Weighted move selection: time moves are most valuable
+        r = random.random()
+        if r < 0.40:
+            move = "time"
+        elif r < 0.55:
+            move = "early"
+        elif r < 0.70:
+            move = "field"
+        elif r < 0.85:
+            move = "swap"
+        else:
+            move = "both"
+
         movable = [mid for mid in new if mid not in self.fixed_match_ids]
 
         if not movable:
@@ -436,7 +497,18 @@ class SAScheduler:
         if move == "time":
             mid = random.choice(movable)
             fid, _ = new[mid]
-            new[mid] = (fid, random.choice(self.time_slot_mins))
+            new[mid] = (fid, self._pick_time(mid))
+            return new, {mid}
+
+        elif move == "early":
+            # Move match to the earliest slot in its window
+            mid = random.choice(movable)
+            fid, _ = new[mid]
+            slots = self.window_slots.get(mid)
+            if slots:
+                new[mid] = (fid, slots[0])
+            else:
+                new[mid] = (fid, self._pick_time(mid))
             return new, {mid}
 
         elif move == "field":
@@ -447,7 +519,7 @@ class SAScheduler:
 
         elif move == "both":
             mid = random.choice(movable)
-            new[mid] = (random.choice(self.fields)["id"], random.choice(self.time_slot_mins))
+            new[mid] = (random.choice(self.fields)["id"], self._pick_time(mid))
             return new, {mid}
 
         elif move == "swap" and len(movable) >= 2:
@@ -463,8 +535,9 @@ class SAScheduler:
 
     def _assign_lockers(self, start_min, duration, placed, match=None):
         end_min        = start_min + duration
-        lk_start       = start_min - self.LOCKER_BUFFER
-        lk_end         = end_min   + self.LOCKER_BUFFER
+        before         = self._locker_buffer_before(match) if match else 45
+        lk_start       = start_min - before
+        lk_end         = end_min   + self.LOCKER_BUFFER_AFTER
         lk_duration    = lk_end - lk_start
 
         free = [
@@ -540,6 +613,57 @@ class SAScheduler:
         return placed
 
     # ------------------------------------------------------------------
+    # POST-SA POLISH: try shifting each match earlier
+    # ------------------------------------------------------------------
+
+    def _polish(self, assignment, cost):
+        """
+        Greedy sweep: for each non-fixed match, try every earlier time slot
+        (earliest first) on each field. Keep the first move that lowers cost.
+        Repeat until no improvement is found.
+        """
+        improved = True
+        passes = 0
+        while improved:
+            improved = False
+            passes += 1
+            for m in self.matches:
+                mid = m["id"]
+                if mid in self.fixed_match_ids:
+                    continue
+
+                cur_fid, cur_start = assignment[mid]
+
+                # Candidate slots: all times earlier than current, plus current
+                # time on other fields — sorted earliest first
+                candidates = []
+                for t in self.time_slot_mins:
+                    if t >= cur_start:
+                        break
+                    for f in self.fields:
+                        candidates.append((f["id"], t))
+                # Also try current time on different fields
+                for f in self.fields:
+                    if f["id"] != cur_fid:
+                        candidates.append((f["id"], cur_start))
+
+                for fid, t in candidates:
+                    old = assignment.copy()
+                    assignment[mid] = (fid, t)
+                    delta = self._delta_cost(assignment, old, {mid})
+                    if delta < -0.01:
+                        cost += delta
+                        improved = True
+                        break  # move to next match
+                    else:
+                        assignment[mid] = (cur_fid, cur_start)
+
+        # Resync cost after all moves
+        cost = self._full_cost(assignment)
+        print(f"  Polish: {passes} passes")
+        return assignment, cost
+
+    # ------------------------------------------------------------------
     # MAIN SOLVE
     # ------------------------------------------------------------------
 
@@ -555,44 +679,76 @@ class SAScheduler:
         print(f"\n{'='*55}")
         print(f"  SIMULATED ANNEALING — {len(self.matches)} matches")
         print(f"  T: {self.T_INIT} → {self.T_MIN}  |  "
-              f"steps: {n_steps}  |  evals: {n_steps * self.ITER_PER_T:,}")
+              f"steps/restart: {n_steps}  |  evals/restart: {n_steps * self.ITER_PER_T:,}")
+        print(f"  Time limit: {self.TIME_LIMIT}s")
         print(f"  Starting cost (greedy): {initial_cost:.1f}")
         print(f"{'='*55}")
+        print(f"  {'restart':>7s}  {'time':>7s}  {'T_end':>8s}  {'cur':>9s}  {'best':>9s}")
+        print(f"  {'-'*7}  {'-'*7}  {'-'*8}  {'-'*9}  {'-'*9}")
 
-        T = self.T_INIT
-        step = 0
         RESYNC_EVERY = 50  # full cost recalc every N temperature steps
+        start_time = time.perf_counter()
+        deadline = start_time + self.TIME_LIMIT
+        restart = 0
+        interrupted = False
 
-        while T > self.T_MIN:
-            for _ in range(self.ITER_PER_T):
-                neighbor, changed_ids = self._neighbor(current)
+        # Outer restart loop: reheat from best until the deadline. Each
+        # restart reuses the best-so-far as its starting state but resets
+        # the temperature, so SA re-explores around the current champion.
+        while time.perf_counter() < deadline:
+            restart += 1
+            current = dict(best)
+            current_cost = best_cost
+            T = self.T_INIT
+            step = 0
 
-                if not changed_ids:
-                    continue
+            while T > self.T_MIN:
+                if time.perf_counter() > deadline:
+                    interrupted = True
+                    break
+                for _ in range(self.ITER_PER_T):
+                    neighbor, changed_ids = self._neighbor(current)
 
-                delta = self._delta_cost(neighbor, current, changed_ids)
+                    if not changed_ids:
+                        continue
 
-                if delta < 0 or random.random() < math.exp(-delta / T):
-                    current      = neighbor
-                    current_cost += delta
+                    delta = self._delta_cost(neighbor, current, changed_ids)
 
-                    if current_cost < best_cost:
-                        best      = dict(current)
-                        best_cost = current_cost
+                    if delta < 0 or random.random() < math.exp(-delta / T):
+                        current      = neighbor
+                        current_cost += delta
 
-            T *= self.COOLING
-            step += 1
+                        if current_cost < best_cost:
+                            best      = dict(current)
+                            best_cost = current_cost
 
-            # Periodic full recalc to correct floating-point drift
-            if step % RESYNC_EVERY == 0:
-                current_cost = self._full_cost(current)
-                full_best = self._full_cost(best)
-                if full_best < best_cost:
-                    best_cost = full_best
+                T *= self.COOLING
+                step += 1
+
+                # Periodic full recalc to correct floating-point drift
+                if step % RESYNC_EVERY == 0:
+                    current_cost = self._full_cost(current)
+                    full_best = self._full_cost(best)
+                    if full_best < best_cost:
+                        best_cost = full_best
+
+            elapsed = time.perf_counter() - start_time
+            print(f"  {restart:>7d}  {elapsed:>6.1f}s  {T:>8.2f}  "
+                  f"{current_cost:>9.1f}  {best_cost:>9.1f}")
+
+            if interrupted:
+                break
 
         improvement = initial_cost - best_cost
-        print(f"  Cost: {initial_cost:.1f} → {best_cost:.1f}  "
-              f"(improved by {improvement:.1f})")
+        print(f"  SA cost: {initial_cost:.1f} → {best_cost:.1f}  "
+              f"(improved by {improvement:.1f}, {restart} restart{'s' if restart != 1 else ''})")
+
+        # ── Post-SA polish: greedy sweep ──
+        best, best_cost = self._polish(best, best_cost)
+
+        total_improvement = initial_cost - best_cost
+        print(f"  Final cost: {best_cost:.1f}  "
+              f"(total improvement: {total_improvement:.1f})")
         print(f"{'='*55}\n")
 
         return self._build_schedule(best)

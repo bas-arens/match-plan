@@ -27,7 +27,7 @@ def to_min(t):
 
 class GreedyScheduler:
 
-    LOCKER_BUFFER        = 20   # minutes before & after match for locker use
+    LOCKER_BUFFER_AFTER  = 30   # minutes after match for locker use
     LOCKER_PENALTY       = 50   # penalty per forced locker share
     FIELD_PREF_PENALTY   = 30   # penalty per match on non-preferred field
     EARLY_PREF_PER_MIN   = 0.5  # penalty per minute late within time window
@@ -63,6 +63,14 @@ class GreedyScheduler:
     def _infer_age(self, team):
         m = re.search(r"JO(\d+)|MO(\d+)", team.upper())
         return int(m.group(1) or m.group(2)) if m else 100
+
+    def _locker_buffer_before(self, match):
+        """Minutes before the match that lockers are occupied, based on age."""
+        age = match["age"]
+        if age >= 100:    return 60   # seniors
+        if age >= 17:     return 45   # JO17–JO19
+        if age >= 13:     return 40   # JO13–JO15
+        return 30                     # JO8–JO12
 
     def _warmup_size(self, match):
         """1/4 field for seniors, 1/8 for juniors."""
@@ -168,10 +176,11 @@ class GreedyScheduler:
                     return False
         return True
 
-    def _free_lockers(self, start_min, end_min):
-        """Returns list of lockers with no booking overlapping [start_min, end_min]."""
-        lk_start = start_min - self.LOCKER_BUFFER
-        lk_end   = end_min   + self.LOCKER_BUFFER
+    def _free_lockers(self, start_min, end_min, match=None):
+        """Returns list of lockers with no booking overlapping the locker window."""
+        before   = self._locker_buffer_before(match) if match else 45
+        lk_start = start_min - before
+        lk_end   = end_min   + self.LOCKER_BUFFER_AFTER
         free = []
         for lk in self.lockers:
             busy = any(
@@ -241,11 +250,12 @@ class GreedyScheduler:
 
     def _assign_lockers(self, start_min, duration, match=None, force_home_locker=None):
         end_min         = start_min + duration
-        locker_start    = start_min - self.LOCKER_BUFFER
-        locker_end      = end_min   + self.LOCKER_BUFFER
+        before          = self._locker_buffer_before(match) if match else 45
+        locker_start    = start_min - before
+        locker_end      = end_min   + self.LOCKER_BUFFER_AFTER
         locker_duration = locker_end - locker_start
 
-        free    = self._free_lockers(start_min, end_min)
+        free    = self._free_lockers(start_min, end_min, match)
         penalty = 0
 
         # Fixed locker assignment overrides preference logic

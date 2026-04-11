@@ -207,11 +207,24 @@ const LANES       = ['A', 'B', 'C', 'D']
 const LANE_LABELS = ['A1', 'A2', 'B1', 'B2']
 const hours       = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
-const LOCKER_BUFFER         = 20
+const LOCKER_BUFFER_AFTER   = 30
 const BASE_LOCKER_PENALTY   = 50
 const BASE_FIELD_PENALTY    = 30
 const BASE_EARLY_PER_MIN    = 0.5
 const TEAM_OVERLAP_PENALTY  = 500
+
+function inferAge(teamName) {
+  const m = teamName.toUpperCase().match(/[JM]O(\d+)/)
+  return m ? parseInt(m[1]) : 100
+}
+
+function lockerBufferBefore(teamName) {
+  const age = inferAge(teamName)
+  if (age >= 100) return 60
+  if (age >= 17)  return 45
+  if (age >= 13)  return 40
+  return 30
+}
 
 const LOCKER_PENALTY        = computed(() => BASE_LOCKER_PENALTY * (props.priorities.lockers ?? 1))
 const FIELD_PREF_PENALTY    = computed(() => BASE_FIELD_PENALTY  * (props.priorities.field_preference ?? 1))
@@ -244,12 +257,15 @@ function ageGroup(teamName) {
 }
 
 const PENALTY_COLORS = {
-  window:  '#EAB308',
-  early:   '#A3E635',
-  locker:  '#F97316',
-  overlap: '#EF4444',
-  field:   '#8B5CF6',
+  window:      '#EAB308',
+  early:       '#A3E635',
+  locker:      '#F97316',
+  locker_pref: '#FB923C',
+  overlap:     '#EF4444',
+  field:       '#8B5CF6',
 }
+
+const LOCKER_PREF_PENALTY = computed(() => 30 * (props.priorities.lockers ?? 1))
 
 // ─── LOCAL SCHEDULE ──────────────────────────────────────────
 const localSchedule = ref([...props.scheduled])
@@ -378,8 +394,8 @@ const penalties = computed(() => {
 
     const ws = timeToMin(pref.start), we = timeToMin(pref.end)
     let win = 0
-    if (m.startMin < ws)      win = ws - m.startMin
-    else if (m.startMin > we) win = m.startMin - we
+    if (m.startMin < ws)    win = ws - m.startMin
+    else if (m.endMin > we) win = m.endMin - we
     if (win > 0) {
       const winPts = win * (props.priorities.time_windows ?? 1)
       total += winPts
@@ -404,6 +420,15 @@ const penalties = computed(() => {
       items.push({ type: 'field', match_id: m.match_id, points: FIELD_PREF_PENALTY.value,
         label: `${m.home}: niet op voorkeursveld` })
     }
+
+    // Locker preference (home locker only)
+    const preferredLockers = pref.preferred_locker_ids ?? []
+    if (preferredLockers.length > 0 && m.home_locker != null &&
+        !preferredLockers.includes(m.home_locker)) {
+      total += LOCKER_PREF_PENALTY.value
+      items.push({ type: 'locker_pref', match_id: m.match_id, points: LOCKER_PREF_PENALTY.value,
+        label: `${m.home}: niet op voorkeurskleedkamer` })
+    }
   }
 
   for (let i = 0; i < sched.length; i++) {
@@ -421,29 +446,30 @@ const penalties = computed(() => {
     }
   }
 
+  // Locker sharing (pair-based, symmetric: 50 × priority per shared locker
+  // between two matches whose locker windows overlap).
   if (props.lockers.length >= 2) {
-    const placed = []
-    const sorted = [...sched].sort((a, b) => a.startMin - b.startMin)
-    for (const m of sorted) {
-      const lkStart = m.startMin - LOCKER_BUFFER
-      const lkEnd   = m.endMin   + LOCKER_BUFFER
-      const free = props.lockers.filter(lk =>
-        !placed.some(p =>
-          (p.home_locker === lk.id || p.away_locker === lk.id) &&
-          p.lk_start < lkEnd && p.lk_start + p.lk_dur > lkStart
-        )
-      )
-      let penalty = 0, homeLk, awayLk
-      if (free.length >= 2)      { ;[homeLk, awayLk] = free }
-      else if (free.length === 1) { homeLk = free[0]; awayLk = props.lockers.find(l => l.id !== homeLk.id); penalty = LOCKER_PENALTY.value }
-      else                        { ;[homeLk, awayLk] = props.lockers; penalty = LOCKER_PENALTY.value * 2 }
-
-      if (penalty > 0) {
-        total += penalty
-        items.push({ type: 'locker', match_id: m.match_id, points: penalty,
-          label: `${m.home}: kleedkamer gedeeld` })
+    const withLockerWindow = sched.map(m => ({
+      ...m,
+      lk_start: m.startMin - lockerBufferBefore(m.home),
+      lk_end:   m.endMin   + LOCKER_BUFFER_AFTER,
+    }))
+    for (let i = 0; i < withLockerWindow.length; i++) {
+      for (let j = i + 1; j < withLockerWindow.length; j++) {
+        const a = withLockerWindow[i]
+        const b = withLockerWindow[j]
+        if (!(a.lk_start < b.lk_end && b.lk_start < a.lk_end)) continue
+        const aSet = new Set([a.home_locker, a.away_locker].filter(x => x != null))
+        const bSet = new Set([b.home_locker, b.away_locker].filter(x => x != null))
+        let shared = 0
+        for (const lk of aSet) if (bSet.has(lk)) shared++
+        if (shared > 0) {
+          const pts = LOCKER_PENALTY.value * shared
+          total += pts
+          items.push({ type: 'locker', match_id: a.match_id, points: pts,
+            label: `${a.home} & ${b.home}: kleedkamer gedeeld` })
+        }
       }
-      placed.push({ home_locker: homeLk.id, away_locker: awayLk.id, lk_start: lkStart, lk_dur: lkEnd - lkStart })
     }
   }
 
