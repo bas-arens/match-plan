@@ -2,7 +2,7 @@
 # File:    backend/app/routers/optimization.py
 # Author:  Bas Arens
 # Purpose: Optimization endpoints that load settings, fetch Sportlink matches,
-#          and dispatch to the selected solver (Greedy, SA, or MILP).
+#          and dispatch to the selected solver (Greedy, SA, or CP-SAT).
 #
 # Endpoints:
 #   GET  /optimize/settings — return all saved settings (fields, lockers, etc.)
@@ -19,9 +19,9 @@ from app.services.optimizer.load_settings import load_all_settings
 from app.services.sportlink import get_matches_for_date
 
 from app.services.optimizer.greedy_solver import GreedyScheduler
-from app.services.optimizer.milp_solver import MILPScheduler
 from app.services.optimizer.sa_solver import SAScheduler
 from app.services.optimizer.cpsat_solver import CPSATScheduler
+from app.services.optimizer.scoring import score_schedule
 
 router = APIRouter(prefix="/optimize", tags=["Optimization"])
 
@@ -29,8 +29,8 @@ router = APIRouter(prefix="/optimize", tags=["Optimization"])
 # Registry of available solvers
 ALGORITHMS = {
     "greedy": GreedyScheduler,
-    "milp":   MILPScheduler,
     "sa":     SAScheduler,
+    "cpsat":  CPSATScheduler,
 }
 
 
@@ -66,10 +66,10 @@ class RunRequest(BaseModel):
 
 @router.post("/run")
 async def run_optimizer(req: RunRequest):
+    import traceback
 
-    
     date = req.date
-        
+
     # Load all config files
     settings = load_all_settings()
 
@@ -94,32 +94,40 @@ async def run_optimizer(req: RunRequest):
 
     t0 = time.perf_counter()
 
-    if algo == "greedy":
-        solver = GreedyScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities)
-        result = solver.solve()
+    try:
+        if algo == "greedy":
+            solver = GreedyScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities)
+            result = solver.solve()
 
-    elif algo == "sa":
-        solver = SAScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities)
-        result = solver.solve()
+        elif algo == "sa":
+            solver = SAScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities)
+            result = solver.solve()
 
-    elif algo == "milp":
-        solver = MILPScheduler(matches, fields, lockers, preferences, date, fixed_slots=fixed_slots, priorities=priorities)
-        solver.build()
-        result = solver.solve()
+        elif algo == "cpsat":
+            solver = CPSATScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities, time_limit=180)
+            result = solver.solve()
 
-    elif algo == "cpsat":
-        solver = CPSATScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities)
-        result = solver.solve()
-
-    else:
-        raise HTTPException(400, f"Unknown algorithm '{algo}'")
+        else:
+            raise HTTPException(400, f"Unknown algorithm '{algo}'")
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"Optimizer error:\n{tb}")
+        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
 
     elapsed_ms = round((time.perf_counter() - t0) * 1000)
+
+    # Canonical scoring: overwrite each entry's penalty field and compute
+    # a single total that matches the frontend's calculation.
+    score = score_schedule(result, preferences=preferences, priorities=priorities)
 
     return {
         "status": "ok",
         "algorithm": algo,
         "date": date,
         "elapsed_ms": elapsed_ms,
-        "scheduled": result
+        "total_penalty": score["total"],
+        "penalty_items": score["items"],
+        "scheduled": result,
     }

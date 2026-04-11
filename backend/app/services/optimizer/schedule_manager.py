@@ -14,7 +14,7 @@ from app.services.optimizer.load_settings import load_fields, load_lockers, load
 class ScheduleManager:
     """
     Bridge between the saved settings (fields, lockers, team windows, optimizer options)
-    and the actual solver (MILP, greedy, metaheuristic).
+    and the actual solver (CP-SAT, greedy, metaheuristic).
     """
 
     def __init__(self):

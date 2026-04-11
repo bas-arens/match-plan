@@ -49,7 +49,7 @@
 // File:    src/components/settings/Optimizer.vue
 // Author:  Bas Arens
 // Purpose: Algorithm selection panel — shows clickable cards for Greedy,
-//          Simulated Annealing, and MILP with plain-language descriptions
+//          Simulated Annealing, and CP-SAT with plain-language descriptions
 //          using football analogies. Selection is auto-saved.
 //
 // Functions:
@@ -81,16 +81,6 @@ const algorithms = [
       'Begint met de greedy planning en probeert die daarna te verbeteren door wedstrijden te wisselen en te schuiven. ' +
       'Zoals een trainer die na de eerste opstelling blijft puzzelen — af en toe een wissel terugdraaien om uiteindelijk een betere combinatie te vinden.',
     when: 'De standaardkeuze. Geeft de beste balans tussen kwaliteit en snelheid.',
-  },
-  {
-    value: 'milp',
-    label: 'MILP',
-    badge: 'traag',
-    badgeClass: 'border-orange-200 text-orange-700 bg-orange-50',
-    description:
-      'Bekijkt alle mogelijke planningen en kiest de beste. Gegarandeerd het beste resultaat — maar bij veel wedstrijden kan dit minuten duren. ' +
-      'Zoals een trainer die écht elke mogelijke opstelling op papier uitwerkt voor hij een beslissing neemt.',
-    when: 'Als je het absolute maximum wilt en de tijd hebt om te wachten.',
   },
   {
     value: 'cpsat',

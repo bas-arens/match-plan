@@ -29,7 +29,7 @@ def ensure_settings_file():
                 "lockerrooms": [],
                 "teamwindows": [],
                 "optimizer": {
-                    "algorithm": "milp",
+                    "algorithm": "cpsat",
                     "allow_overlap": False,
                     "priority_teams": []
                 }

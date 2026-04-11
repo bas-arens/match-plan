@@ -113,7 +113,7 @@ class OptimizerSettings(BaseModel):
 
 @router.get("/optimizer")
 def get_optimizer():
-    return load_json("optimizer", default={"algorithm": "milp"})
+    return load_json("optimizer", default={"algorithm": "cpsat"})
 
 
 @router.post("/optimizer")
