@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "team": "De Esch 1",
+    "time": "14:30",
+    "field_id": 1764528680932,
+    "locker_id": 8
+  },
+  {
+    "team": "De Esch 2",
+    "time": "12:30",
+    "field_id": 1764528680932,
+    "locker_id": 7
+  }
+]
