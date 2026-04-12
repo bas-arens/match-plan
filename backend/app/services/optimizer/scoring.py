@@ -8,7 +8,6 @@
 #
 # Penalty components (each multiplied by its priority weight):
 #   - window          : flat 150 + 1 per minute outside the time window
-#   - early           : 0.5 per minute after the window start (within window)
 #   - field_pref      : 30 per match on a non-preferred field
 #   - team_overlap    : 500 per pair of matches sharing a team that overlap
 #   - locker_share    : 50 per pair of matches with overlapping locker windows
@@ -27,7 +26,6 @@ LOCKER_BUFFER_AFTER = 30
 
 W_WINDOW_BASE  = 150    # flat penalty for being outside window at all
 W_WINDOW       = 1      # per minute outside window (on top of base)
-W_EARLY        = 0.5    # per minute after window start (within window)
 W_FIELD_PREF   = 30     # per match on non-preferred field
 W_TEAM_OVERLAP = 500    # per pair of matches with team overlap
 W_LOCKER_SHARE = 50     # per pair × shared locker slot
@@ -129,11 +127,6 @@ def score_schedule(schedule, preferences=None, priorities=None):
             mins = s["end"] - we
             add(s, (W_WINDOW_BASE + mins * W_WINDOW) * p_time, "window",
                 f'{s["home"]}: {mins} min buiten tijdvenster')
-        else:
-            early = s["start"] - ws
-            if early > 0:
-                add(s, early * W_EARLY * p_time, "early",
-                    f'{s["home"]}: {early} min na vroegst mogelijke start')
 
         pref_fids = pref.get("preferred_field_ids", []) or []
         if pref_fids and s["field_id"] not in pref_fids:

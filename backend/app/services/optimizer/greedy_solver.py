@@ -10,8 +10,7 @@
 #   GreedyScheduler — __init__, solve()
 #
 # Key constants:
-#   LOCKER_BUFFER, LOCKER_PENALTY, FIELD_PREF_PENALTY,
-#   EARLY_PREF_PER_MIN, WARMUP_DURATION
+#   LOCKER_BUFFER, LOCKER_PENALTY, FIELD_PREF_PENALTY, WARMUP_DURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
 import re
@@ -30,7 +29,6 @@ class GreedyScheduler:
     LOCKER_BUFFER_AFTER  = 30   # minutes after match for locker use
     LOCKER_PENALTY       = 50   # penalty per forced locker share
     FIELD_PREF_PENALTY   = 30   # penalty per match on non-preferred field
-    EARLY_PREF_PER_MIN   = 0.5  # penalty per minute late within time window
     WARMUP_DURATION      = 15   # minutes of warm-up before match on the same field
 
     DEFAULT_WINDOW = {"start": "08:00", "end": "20:00"}
@@ -47,7 +45,6 @@ class GreedyScheduler:
         # Apply priority multipliers to penalty weights
         self.LOCKER_PENALTY      = 50  * self.priorities["lockers"]
         self.FIELD_PREF_PENALTY  = 30  * self.priorities["field_preference"]
-        self.EARLY_PREF_PER_MIN  = 0.5 * self.priorities["time_windows"]
 
         # Build lookup: team → fixed slot config
         self.fixed_by_team = {fs["team"]: fs for fs in self.fixed_slots}
@@ -211,9 +208,8 @@ class GreedyScheduler:
     # Primary:   field preference penalty (wrong field)
     # Secondary: field already in use?   (fill fields before opening new ones)
     # Tertiary:  window penalty          (minutes outside preferred window)
-    # Quaternary: earliness              (minutes from window start, prefer early)
     #
-    # Using a 4-tuple makes each criterion dominant over the next.
+    # Using a 3-tuple makes each criterion dominant over the next.
     # ------------------------------------------------------------------
 
     def _slot_score(self, match, field_id, start_min):
@@ -223,13 +219,10 @@ class GreedyScheduler:
         end_min = start_min + match["duration"]
         if start_min < ws:
             window_penalty = ws - start_min
-            earliness = 0
         elif end_min > we:
             window_penalty = end_min - we
-            earliness = 0
         else:
             window_penalty = 0
-            earliness = start_min - ws  # prefer earliest slot within window
 
         field_is_new = 0 if any(s["field_id"] == field_id for s in self.schedule) else 1
 
@@ -242,7 +235,7 @@ class GreedyScheduler:
             if preferred_ids and field_id not in preferred_ids:
                 field_penalty += self.FIELD_PREF_PENALTY
 
-        return (field_penalty, field_is_new, window_penalty, earliness)
+        return (field_penalty, field_is_new, window_penalty)
 
     # ------------------------------------------------------------------
     # LOCKER ASSIGNMENT
@@ -394,12 +387,11 @@ class GreedyScheduler:
             field     = next(f for f in self.fields if f["id"] == field_id)
             lockers   = self._assign_lockers(start_min, match["duration"], match)
 
-            field_penalty, _, window_penalty, earliness = score_tuple
+            field_penalty, _, window_penalty = score_tuple
             window_base = 150 * self.priorities["time_windows"] if window_penalty > 0 else 0
             total_penalty += (lockers["locker_penalty"]
                               + window_base
                               + window_penalty * self.priorities["time_windows"]
-                              + earliness * self.EARLY_PREF_PER_MIN
                               + field_penalty)
 
             locker_note = ""

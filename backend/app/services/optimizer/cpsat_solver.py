@@ -131,9 +131,7 @@ class CPSATScheduler:
 
         # Penalty collector variables — all in MINUTES so CP-SAT's cost lines
         # up with the canonical scorer in scoring.py.
-        before_penalty_vars = {}
-        after_penalty_vars  = {}
-        early_penalty_vars  = {}
+        window_penalty_vars = {}  # mid → (before_var, after_var, is_outside)
         field_penalty_vars  = {}
 
         day_range = self.DAY_END - self.DAY_START
@@ -164,9 +162,9 @@ class CPSATScheduler:
                 # Home and away locker must differ
                 model.add(hlk_vars[mid] != alk_vars[mid])
 
-            # ── Window / early penalty (skip teams without a preference) ──
-            # Work in exact minutes (not slot units) so rounding at window
-            # edges matches scoring.py.
+            # ── Window penalty (skip teams without a preference) ──
+            # Inside the window = 0 penalty. Outside = flat 150 + 1/min.
+            # No earliness gradient — the window IS the preference.
             if pref is not None:
                 start_min_expr = start_vars[mid] * self.SLOT_SIZE
 
@@ -180,33 +178,20 @@ class CPSATScheduler:
                 model.add(after_var >= start_min_expr + dur - we)
                 model.add(after_var >= 0)
 
-                # Canonical charges `early` only when the match ends inside
-                # the window (if/elif/else). Bind `is_late` to the actual
-                # condition `start + dur > we` — otherwise the solver can
-                # inflate `after_var` to flip the gate and skip early cost.
-                is_late = model.new_bool_var(f"late_{mid}")
-                model.add(start_min_expr + dur >= we + 1).only_enforce_if(is_late)
-                model.add(start_min_expr + dur <= we).only_enforce_if(~is_late)
-
-                # is_before: start < ws
+                # is_outside: flat base penalty when before OR after window
                 is_before = model.new_bool_var(f"bef_{mid}")
                 model.add(start_min_expr <= ws - 1).only_enforce_if(is_before)
                 model.add(start_min_expr >= ws).only_enforce_if(~is_before)
 
-                # is_outside: used for the flat window base penalty so being
-                # outside the window is ALWAYS worse than any inside position.
+                is_late = model.new_bool_var(f"late_{mid}")
+                model.add(start_min_expr + dur >= we + 1).only_enforce_if(is_late)
+                model.add(start_min_expr + dur <= we).only_enforce_if(~is_late)
+
                 is_outside = model.new_bool_var(f"out_{mid}")
                 model.add(is_outside >= is_before)
                 model.add(is_outside >= is_late)
 
-                early_var = model.new_int_var(0, day_range, f"early_{mid}")
-                model.add(early_var >= start_min_expr - ws).only_enforce_if(~is_late)
-                model.add(early_var >= 0)
-                model.add(early_var == 0).only_enforce_if(is_late)
-
-                before_penalty_vars[mid] = (before_var, is_outside)
-                after_penalty_vars[mid]  = after_var
-                early_penalty_vars[mid]  = early_var
+                window_penalty_vars[mid] = (before_var, after_var, is_outside)
 
             # Field preference penalty (boolean)
             preferred_fids = pref.get("preferred_field_ids", []) if pref else []
@@ -396,19 +381,17 @@ class CPSATScheduler:
         obj_terms = []
         WB_WEIGHT = int(1500 * p["time_windows"])       # 150 flat × 10
         W_WEIGHT  = int(10 * p["time_windows"])         # 1/min × 10
-        E_WEIGHT  = int(5  * p["time_windows"])         # 0.5/min × 10
         F_WEIGHT  = int(300 * p["field_preference"])    # 30 × 10
         LP_WEIGHT = int(300 * p["lockers"])             # 30 × 10 (locker preference)
         LS_WEIGHT = int(500 * p["lockers"])             # 50 × 10 (locker sharing)
 
         for m in self.matches:
             mid = m["id"]
-            if mid in before_penalty_vars:
-                before_var, is_outside = before_penalty_vars[mid]
+            if mid in window_penalty_vars:
+                before_var, after_var, is_outside = window_penalty_vars[mid]
                 obj_terms.append(WB_WEIGHT * is_outside)
                 obj_terms.append(W_WEIGHT * before_var)
-                obj_terms.append(W_WEIGHT * after_penalty_vars[mid])
-                obj_terms.append(E_WEIGHT * early_penalty_vars[mid])
+                obj_terms.append(W_WEIGHT * after_var)
             obj_terms.append(F_WEIGHT * field_penalty_vars[mid])
             if mid in locker_penalty_vars:
                 obj_terms.append(LP_WEIGHT * locker_penalty_vars[mid])

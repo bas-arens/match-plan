@@ -211,7 +211,6 @@ const LOCKER_BUFFER_AFTER   = 30
 const BASE_LOCKER_PENALTY   = 50
 const BASE_FIELD_PENALTY    = 30
 const BASE_WINDOW_FLAT      = 150   // flat penalty for being outside window at all
-const BASE_EARLY_PER_MIN    = 0.5
 const TEAM_OVERLAP_PENALTY  = 500
 
 function inferAge(teamName) {
@@ -229,7 +228,6 @@ function lockerBufferBefore(teamName) {
 
 const LOCKER_PENALTY        = computed(() => BASE_LOCKER_PENALTY * (props.priorities.lockers ?? 1))
 const FIELD_PREF_PENALTY    = computed(() => BASE_FIELD_PENALTY  * (props.priorities.field_preference ?? 1))
-const EARLY_PREF_PER_MIN    = computed(() => BASE_EARLY_PER_MIN  * (props.priorities.time_windows ?? 1))
 
 const AGE_GROUP_COLORS = {
   'senioren': '#3B82F6',  // blue
@@ -259,7 +257,6 @@ function ageGroup(teamName) {
 
 const PENALTY_COLORS = {
   window:      '#EAB308',
-  early:       '#A3E635',
   locker:      '#F97316',
   locker_pref: '#FB923C',
   overlap:     '#EF4444',
@@ -403,17 +400,6 @@ const penalties = computed(() => {
       total += winPts
       items.push({ type: 'window', match_id: m.match_id, points: winPts,
         label: `${m.home}: ${win} min buiten tijdvenster` })
-    } else {
-      // Earliness: prefer starting at the beginning of the time window
-      const earlyMin = m.startMin - ws
-      if (earlyMin > 0) {
-        const earlyPts = Math.round(earlyMin * EARLY_PREF_PER_MIN.value * 10) / 10
-        if (earlyPts > 0) {
-          total += earlyPts
-          items.push({ type: 'early', match_id: m.match_id, points: earlyPts,
-            label: `${m.home}: ${earlyMin} min na vroegst mogelijke start` })
-        }
-      }
     }
 
     const preferredIds = pref.preferred_field_ids ?? []
