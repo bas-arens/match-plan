@@ -104,7 +104,7 @@ async def run_optimizer(req: RunRequest):
             result = solver.solve()
 
         elif algo == "cpsat":
-            solver = CPSATScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities, time_limit=180)
+            solver = CPSATScheduler(matches, fields, lockers, preferences, fixed_slots=fixed_slots, priorities=priorities, time_limit=60)
             result = solver.solve()
 
         else:

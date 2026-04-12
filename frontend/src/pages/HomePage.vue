@@ -100,7 +100,7 @@ const algorithms = [
 const EXPECTED_SECONDS = {
   greedy: 1,
   sa:     180,
-  cpsat:  180,
+  cpsat:  60,
 }
 
 onMounted(async () => {

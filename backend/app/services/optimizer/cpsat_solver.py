@@ -59,7 +59,7 @@ class CPSATScheduler:
     LOCKER_BUFFER_AFTER = 30
     WARMUP_DURATION     = 15
     SLOT_SIZE       = 15
-    TIME_LIMIT      = 0    # 0 = unlimited; override via constructor
+    TIME_LIMIT      = 60    # 0 = unlimited; override via constructor
 
     DAY_START = 8 * 60 + 30   # 08:30
     DAY_END   = 20 * 60       # 20:00
@@ -227,8 +227,8 @@ class CPSATScheduler:
                         m1["away"] in (m2["home"], m2["away"])):
                     continue
                 mid1, mid2 = m1["id"], m2["id"]
-                dur1_slots = m1["duration"] // self.SLOT_SIZE
-                dur2_slots = m2["duration"] // self.SLOT_SIZE
+                dur1_slots = -(-m1["duration"] // self.SLOT_SIZE)
+                dur2_slots = -(-m2["duration"] // self.SLOT_SIZE)
 
                 # m1 before m2 OR m2 before m1
                 b = model.new_bool_var(f"order_{mid1}_{mid2}")
@@ -247,7 +247,7 @@ class CPSATScheduler:
             demands   = []
             for m in self.matches:
                 mid = m["id"]
-                dur_slots = m["duration"] // self.SLOT_SIZE
+                dur_slots = -(-m["duration"] // self.SLOT_SIZE)
                 demand = int(m["field_size"] * SCALE)
 
                 # Boolean: is this match on this field?
