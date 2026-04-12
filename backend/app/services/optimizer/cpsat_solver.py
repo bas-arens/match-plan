@@ -188,12 +188,23 @@ class CPSATScheduler:
                 model.add(start_min_expr + dur >= we + 1).only_enforce_if(is_late)
                 model.add(start_min_expr + dur <= we).only_enforce_if(~is_late)
 
+                # is_before: start < ws
+                is_before = model.new_bool_var(f"bef_{mid}")
+                model.add(start_min_expr <= ws - 1).only_enforce_if(is_before)
+                model.add(start_min_expr >= ws).only_enforce_if(~is_before)
+
+                # is_outside: used for the flat window base penalty so being
+                # outside the window is ALWAYS worse than any inside position.
+                is_outside = model.new_bool_var(f"out_{mid}")
+                model.add(is_outside >= is_before)
+                model.add(is_outside >= is_late)
+
                 early_var = model.new_int_var(0, day_range, f"early_{mid}")
                 model.add(early_var >= start_min_expr - ws).only_enforce_if(~is_late)
                 model.add(early_var >= 0)
                 model.add(early_var == 0).only_enforce_if(is_late)
 
-                before_penalty_vars[mid] = before_var
+                before_penalty_vars[mid] = (before_var, is_outside)
                 after_penalty_vars[mid]  = after_var
                 early_penalty_vars[mid]  = early_var
 
@@ -383,6 +394,7 @@ class CPSATScheduler:
         # Penalty vars are in MINUTES already; weights mirror scoring.py
         # scaled by 10 for integer precision. Divide by 10 at the end.
         obj_terms = []
+        WB_WEIGHT = int(1500 * p["time_windows"])       # 150 flat × 10
         W_WEIGHT  = int(10 * p["time_windows"])         # 1/min × 10
         E_WEIGHT  = int(5  * p["time_windows"])         # 0.5/min × 10
         F_WEIGHT  = int(300 * p["field_preference"])    # 30 × 10
@@ -392,7 +404,9 @@ class CPSATScheduler:
         for m in self.matches:
             mid = m["id"]
             if mid in before_penalty_vars:
-                obj_terms.append(W_WEIGHT * before_penalty_vars[mid])
+                before_var, is_outside = before_penalty_vars[mid]
+                obj_terms.append(WB_WEIGHT * is_outside)
+                obj_terms.append(W_WEIGHT * before_var)
                 obj_terms.append(W_WEIGHT * after_penalty_vars[mid])
                 obj_terms.append(E_WEIGHT * early_penalty_vars[mid])
             obj_terms.append(F_WEIGHT * field_penalty_vars[mid])

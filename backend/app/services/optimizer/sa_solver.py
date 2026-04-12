@@ -29,6 +29,7 @@ def to_min(t):
 class SAScheduler:
 
     # Soft penalty weights
+    WINDOW_PENALTY_BASE     = 150   # flat penalty for being outside window at all
     WINDOW_PENALTY_PER_MIN  = 1
     EARLY_PREF_PER_MIN      = 0.5   # prefer earlier start within the time window
     FIELD_PREF_PENALTY      = 30
@@ -62,6 +63,7 @@ class SAScheduler:
         self.priorities   = priorities or {"lockers": 1, "time_windows": 1, "field_preference": 1}
 
         # Apply priority multipliers to penalty weights
+        self.WINDOW_PENALTY_BASE    = 150 * self.priorities["time_windows"]
         self.WINDOW_PENALTY_PER_MIN = 1   * self.priorities["time_windows"]
         self.EARLY_PREF_PER_MIN     = 0.5 * self.priorities["time_windows"]
         self.FIELD_PREF_PENALTY     = 30  * self.priorities["field_preference"]
@@ -180,9 +182,9 @@ class SAScheduler:
         ws = to_min(match["preferred"]["start"])
         we = to_min(match["preferred"]["end"])
         if start < ws:
-            cost += (ws - start) * self.WINDOW_PENALTY_PER_MIN
+            cost += self.WINDOW_PENALTY_BASE + (ws - start) * self.WINDOW_PENALTY_PER_MIN
         elif end > we:
-            cost += (end - we) * self.WINDOW_PENALTY_PER_MIN
+            cost += self.WINDOW_PENALTY_BASE + (end - we) * self.WINDOW_PENALTY_PER_MIN
         else:
             cost += (start - ws) * self.EARLY_PREF_PER_MIN
 

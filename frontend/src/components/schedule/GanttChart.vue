@@ -210,6 +210,7 @@ const hours       = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 const LOCKER_BUFFER_AFTER   = 30
 const BASE_LOCKER_PENALTY   = 50
 const BASE_FIELD_PENALTY    = 30
+const BASE_WINDOW_FLAT      = 150   // flat penalty for being outside window at all
 const BASE_EARLY_PER_MIN    = 0.5
 const TEAM_OVERLAP_PENALTY  = 500
 
@@ -397,7 +398,8 @@ const penalties = computed(() => {
     if (m.startMin < ws)    win = ws - m.startMin
     else if (m.endMin > we) win = m.endMin - we
     if (win > 0) {
-      const winPts = win * (props.priorities.time_windows ?? 1)
+      const pTime = props.priorities.time_windows ?? 1
+      const winPts = (BASE_WINDOW_FLAT + win) * pTime
       total += winPts
       items.push({ type: 'window', match_id: m.match_id, points: winPts,
         label: `${m.home}: ${win} min buiten tijdvenster` })
