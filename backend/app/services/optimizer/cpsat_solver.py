@@ -408,7 +408,7 @@ class CPSATScheduler:
 
         callback = _ProgressCallback(scale=10)
 
-        print(f"  Weights: window={W_WEIGHT}, early={E_WEIGHT}, field={F_WEIGHT}, "
+        print(f"  Weights: window_base={WB_WEIGHT}, window/min={W_WEIGHT}, field={F_WEIGHT}, "
               f"locker_pref={LP_WEIGHT}, locker_share={LS_WEIGHT}")
         print(f"Solving (time limit {self.TIME_LIMIT}s)...")
         print(f"  {'#':>5s}  {'time':>7s}  {'cost':>8s}  {'bound':>8s}  {'gap':>5s}")
