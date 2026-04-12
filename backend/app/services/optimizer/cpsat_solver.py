@@ -131,7 +131,7 @@ class CPSATScheduler:
 
         # Penalty collector variables — all in MINUTES so CP-SAT's cost lines
         # up with the canonical scorer in scoring.py.
-        window_penalty_vars = {}  # mid → (before_var, after_var, is_outside)
+        window_penalty_vars = {}  # mid → (before_var, after_var)
         field_penalty_vars  = {}
 
         day_range = self.DAY_END - self.DAY_START
@@ -163,7 +163,7 @@ class CPSATScheduler:
                 model.add(hlk_vars[mid] != alk_vars[mid])
 
             # ── Window penalty (skip teams without a preference) ──
-            # Inside the window = 0 penalty. Outside = flat 150 + 1/min.
+            # Inside the window = 0 penalty. Outside = 1 per minute.
             # No earliness gradient — the window IS the preference.
             if pref is not None:
                 start_min_expr = start_vars[mid] * self.SLOT_SIZE
@@ -178,20 +178,7 @@ class CPSATScheduler:
                 model.add(after_var >= start_min_expr + dur - we)
                 model.add(after_var >= 0)
 
-                # is_outside: flat base penalty when before OR after window
-                is_before = model.new_bool_var(f"bef_{mid}")
-                model.add(start_min_expr <= ws - 1).only_enforce_if(is_before)
-                model.add(start_min_expr >= ws).only_enforce_if(~is_before)
-
-                is_late = model.new_bool_var(f"late_{mid}")
-                model.add(start_min_expr + dur >= we + 1).only_enforce_if(is_late)
-                model.add(start_min_expr + dur <= we).only_enforce_if(~is_late)
-
-                is_outside = model.new_bool_var(f"out_{mid}")
-                model.add(is_outside >= is_before)
-                model.add(is_outside >= is_late)
-
-                window_penalty_vars[mid] = (before_var, after_var, is_outside)
+                window_penalty_vars[mid] = (before_var, after_var)
 
             # Field preference penalty (boolean)
             preferred_fids = pref.get("preferred_field_ids", []) if pref else []
@@ -379,7 +366,6 @@ class CPSATScheduler:
         # Penalty vars are in MINUTES already; weights mirror scoring.py
         # scaled by 10 for integer precision. Divide by 10 at the end.
         obj_terms = []
-        WB_WEIGHT = int(1500 * p["time_windows"])       # 150 flat × 10
         W_WEIGHT  = int(10 * p["time_windows"])         # 1/min × 10
         F_WEIGHT  = int(300 * p["field_preference"])    # 30 × 10
         LP_WEIGHT = int(300 * p["lockers"])             # 30 × 10 (locker preference)
@@ -388,8 +374,7 @@ class CPSATScheduler:
         for m in self.matches:
             mid = m["id"]
             if mid in window_penalty_vars:
-                before_var, after_var, is_outside = window_penalty_vars[mid]
-                obj_terms.append(WB_WEIGHT * is_outside)
+                before_var, after_var = window_penalty_vars[mid]
                 obj_terms.append(W_WEIGHT * before_var)
                 obj_terms.append(W_WEIGHT * after_var)
             obj_terms.append(F_WEIGHT * field_penalty_vars[mid])
@@ -408,7 +393,7 @@ class CPSATScheduler:
 
         callback = _ProgressCallback(scale=10)
 
-        print(f"  Weights: window_base={WB_WEIGHT}, window/min={W_WEIGHT}, field={F_WEIGHT}, "
+        print(f"  Weights: window/min={W_WEIGHT}, field={F_WEIGHT}, "
               f"locker_pref={LP_WEIGHT}, locker_share={LS_WEIGHT}")
         print(f"Solving (time limit {self.TIME_LIMIT}s)...")
         print(f"  {'#':>5s}  {'time':>7s}  {'cost':>8s}  {'bound':>8s}  {'gap':>5s}")

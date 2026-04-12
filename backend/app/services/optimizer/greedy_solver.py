@@ -388,9 +388,7 @@ class GreedyScheduler:
             lockers   = self._assign_lockers(start_min, match["duration"], match)
 
             field_penalty, _, window_penalty = score_tuple
-            window_base = 150 * self.priorities["time_windows"] if window_penalty > 0 else 0
             total_penalty += (lockers["locker_penalty"]
-                              + window_base
                               + window_penalty * self.priorities["time_windows"]
                               + field_penalty)
 
