@@ -229,11 +229,11 @@ const LOCKER_PENALTY        = computed(() => BASE_LOCKER_PENALTY * (props.priori
 const FIELD_PREF_PENALTY    = computed(() => BASE_FIELD_PENALTY  * (props.priorities.field_preference ?? 1))
 
 const AGE_GROUP_COLORS = {
-  'senioren': '#3B82F6',  // blue
-  'jo7-9':    '#10B981',  // emerald  — youngest
-  'jo10-12':  '#F59E0B',  // amber
-  'jo13-15':  '#F43F5E',  // rose
-  'jo16-19':  '#8B5CF6',  // violet
+  'senioren': '#2979FF',  // vivid blue   — most authoritative
+  'jo7-9':    '#FF3366',  // hot red      — youngest, most energetic
+  'jo10-12':  '#FF6B00',  // vivid orange
+  'jo13-15':  '#FFCC00',  // electric yellow
+  'jo16-19':  '#00C853',  // vivid green
 }
 
 const AGE_GROUP_LABELS = {

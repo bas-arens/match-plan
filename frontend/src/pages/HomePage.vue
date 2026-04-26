@@ -41,7 +41,7 @@
             class="px-4 py-1.5 text-xs font-semibold rounded-full border-2 transition-all"
             :class="algo === opt.value
               ? `${opt.activeClass} shadow-sm`
-              : `border-gray-200 text-gray-400 hover:border-gray-300`"
+              : `border-gray-200 text-gray-400 ${opt.hoverClass}`"
           >
             {{ opt.label }}
           </button>
@@ -88,9 +88,24 @@ let progressRAF    = null
 const algo = ref('sa')
 
 const algorithms = [
-  { value: 'greedy', label: 'Greedy',   activeClass: 'border-emerald-500 text-emerald-600 bg-emerald-50' },
-  { value: 'sa',     label: 'SA',       activeClass: 'border-blue-500 text-blue-600 bg-blue-50' },
-  { value: 'cpsat',  label: 'CP-SAT',   activeClass: 'border-purple-500 text-purple-600 bg-purple-50' },
+  {
+    value: 'greedy',
+    label: 'Snel',
+    activeClass: 'border-emerald-500 text-emerald-600 bg-emerald-50',
+    hoverClass:  'hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50',
+  },
+  {
+    value: 'sa',
+    label: 'Gebalanceerd',
+    activeClass: 'border-blue-500 text-blue-600 bg-blue-50',
+    hoverClass:  'hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50',
+  },
+  {
+    value: 'cpsat',
+    label: 'Optimaal',
+    activeClass: 'border-orange-500 text-orange-600 bg-orange-50',
+    hoverClass:  'hover:border-orange-300 hover:text-orange-600 hover:bg-orange-50',
+  },
 ]
 
 // Expected solver wall-time in seconds. Drives the progress bar so the fill
