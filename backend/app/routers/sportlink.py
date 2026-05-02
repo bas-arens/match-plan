@@ -14,12 +14,14 @@
 #   GET /sportlink/teams                 — teams grouped by age category
 # ─────────────────────────────────────────────────────────────────────────────
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from app.core.security import get_current_user
 from app.services import sportlink
 
 router = APIRouter(
     prefix="/sportlink",
-    tags=["Sportlink API"]
+    tags=["Sportlink API"],
+    dependencies=[Depends(get_current_user)],
 )
 
 # -----------------------------------------------------------

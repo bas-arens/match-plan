@@ -16,12 +16,18 @@
 #   POST /settings/optimizer    — save optimizer algorithm config
 # ─────────────────────────────────────────────────────────────────────────────
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 import json
 import os
 
-router = APIRouter(prefix="/settings", tags=["Settings"])
+from app.core.security import get_current_user
+
+router = APIRouter(
+    prefix="/settings",
+    tags=["Settings"],
+    dependencies=[Depends(get_current_user)],
+)
 
 BASE_PATH = "app/data"
 os.makedirs(BASE_PATH, exist_ok=True)
@@ -90,7 +96,9 @@ class TeamPreference(BaseModel):
     team: str
     start: str
     end: str
-    preferred_field_ids: list[int] = []
+    preferred_field_ids:  list[int] = []
+    preferred_locker_ids: list[int] = []
+    force_own_locker:     bool      = False
 
 
 @router.get("/preferences")

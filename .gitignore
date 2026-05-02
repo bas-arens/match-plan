@@ -1,6 +1,7 @@
 # Secrets
 backend/.env
 frontend/.env
+backend/app/data/users.json
 
 # Python
 backend/venv/

@@ -6,10 +6,10 @@
 #          lifespan context so CLUB_NAME and CLUB_CODE are available globally.
 #
 # Routers:
-#   /sportlink   — Sportlink data proxy (matches, teams, logo)
-#   /schedule    — schedule retrieval (stub)
-#   /optimize    — match planning optimizer
-#   /settings    — club configuration (fields, lockers, preferences)
+#   /auth        — login + whoami (public)
+#   /sportlink   — Sportlink data proxy (matches, teams, logo)  [auth required]
+#   /optimize    — match planning optimizer                       [auth required]
+#   /settings    — club configuration (fields, lockers, prefs)    [auth required]
 # ─────────────────────────────────────────────────────────────────────────────
 
 from fastapi import FastAPI
@@ -20,10 +20,9 @@ from app.services.sportlink import get_club_info
 from app.core.config import settings
 
 # Routers importeren
+from app.routers.auth import router as auth_router
 from app.routers.sportlink import router as sportlink_router
-from app.routers.schedule import router as schedule_router
 from app.routers.optimization import router as optimization_router
-
 from app.routers.settings import router as settings_router
 
 app = FastAPI(title="MatchPlan API")
@@ -57,10 +56,9 @@ async def lifespan(app: FastAPI):
 app.router.lifespan_context = lifespan
 
 # Routers registreren
+app.include_router(auth_router)
 app.include_router(sportlink_router)
-app.include_router(schedule_router)
 app.include_router(optimization_router)
-
 app.include_router(settings_router)
 
 
